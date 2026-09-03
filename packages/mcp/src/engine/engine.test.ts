@@ -8,7 +8,13 @@ import { imagesEqual, readPng } from "../../../../test/quality/image";
 import type { QualityImageCase } from "../../../../test/quality/types";
 import { decodeImage } from "../io/image-io";
 import { createEngine } from "./engine";
+import type { RefineSettings } from "./types";
 import { SettingsError } from "./types";
+
+// [Intended] JSON 経由の呼び出しは型で守れないため、検査は unknown を挟んで実行時に確かめる。
+const INVALID_SETTINGS = {
+	advanced: { colorCount: "lots" },
+} as unknown as RefineSettings;
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../../", import.meta.url));
 
@@ -217,6 +223,42 @@ describe("createEngine refineBatch", () => {
 					enabled: true,
 					ditherMode: "nope" as DitherMode,
 				},
+			}),
+		).rejects.toBeInstanceOf(SettingsError);
+	});
+
+	it("項目ごとの設定が不正なら、その項目だけ INVALID_SETTINGS になる", async () => {
+		const target = repositoryPath(
+			"test/fixtures/quality_prf420_shared_palette_target.png",
+		);
+		const bytes = new Uint8Array(readFileSync(target));
+		const result = await createEngine().refineBatch({
+			items: [
+				{ id: "first", input: bytes },
+				{ id: "broken-settings", input: bytes, settings: INVALID_SETTINGS },
+				{ id: "last", input: bytes },
+			],
+			settings: batchSettings,
+		});
+
+		const [first, broken, last] = result.items;
+		expect(first.status).toBe("done");
+		expect(last.status).toBe("done");
+		expect(broken.status).toBe("error");
+		if (broken.status !== "error") throw new Error("expected an error item");
+		expect(broken.id).toBe("broken-settings");
+		expect(broken.error.code).toBe("INVALID_SETTINGS");
+		expect(broken.error.message).toContain("colorCount");
+	});
+
+	it("共通設定が不正なら呼び出し全体を失敗にする", async () => {
+		const target = repositoryPath(
+			"test/fixtures/quality_prf420_shared_palette_target.png",
+		);
+		await expect(
+			createEngine().refineBatch({
+				items: [{ id: "target", input: new Uint8Array(readFileSync(target)) }],
+				settings: INVALID_SETTINGS,
 			}),
 		).rejects.toBeInstanceOf(SettingsError);
 	});

@@ -150,23 +150,13 @@ export const createEngine = (): PixelRefinerEngine => {
 		const processed = runCore(() =>
 			service.process(decoded.image, options, cacheKey),
 		);
+		// [Intended] 候補は計画（selectCandidatePlans の出力）だけを並べ、実結果は作らない。
+		// 候補を先に作ると 1 回の analyze で候補の数だけフル処理が走り、「まず analyze して
+		// 様子を見る」使い方が refine より重くなる。候補を選んだときの処理は
+		// refine(candidateId) の 1 回で足り、その際も検出結果は上の process で温めた
+		// 検出キャッシュから使い回される。
 		const candidates = runCore(() =>
 			candidatePlansOf(decoded.image, processed, options),
-		);
-		// [Intended] 候補の実結果をここで作って ProcessingService に残す。直後の
-		// refine(candidateId) が処理をやり直さずに済む。プレビュー画像そのものは
-		// レポートには載せない（レポートは候補の計画だけを並べる）。
-		runCore(() =>
-			service.previewCandidates(
-				decoded.image,
-				options,
-				processed.analysis,
-				cacheKey,
-				{
-					result: processed.result,
-					colorCount: processed.extractedPalette.length,
-				},
-			),
 		);
 		return {
 			report: reportOf(decoded, processed, candidates, settings),

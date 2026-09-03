@@ -71,7 +71,7 @@ export type BatchItemSuccess = {
 export type BatchItemFailure = {
 	id: string;
 	status: "error";
-	error: { code: EngineErrorCode; message: string };
+	error: { code: EngineErrorCode; message: string; hint?: string };
 };
 
 export type BatchItemResult = BatchItemSuccess | BatchItemFailure;
@@ -121,28 +121,52 @@ type PreparedItem =
 	| { status: "ready"; decoded: DecodedInput; settings: ResolvedSettings }
 	| { status: "failed"; failure: BatchItemFailure };
 
+/**
+ * 1 件分の設定解決とデコードを行う。
+ * [Intended] どちらの失敗もその 1 枚の事情なので、並びに失敗として残して残りの処理は続ける。
+ * 項目ごとの設定を書き間違えただけで、正しく書けた他の枚数の処理まで捨てさせない。
+ * 共通設定の誤りは全項目に効くので、こことは別に呼び出し全体の失敗として扱う。
+ */
 const prepareItem = async (
 	item: BatchItemRequest,
-	settings: ResolvedSettings,
+	common: RefineSettings | undefined,
+	commonSettings: ResolvedSettings,
 ): Promise<PreparedItem> => {
 	try {
+		const settings =
+			item.settings === undefined
+				? commonSettings
+				: resolveSettings(mergeSettings(common, item.settings));
 		return {
 			status: "ready",
 			decoded: await decodeInput(item.input),
 			settings,
 		};
 	} catch (error) {
-		if (!(error instanceof EngineInputError)) throw error;
+		if (
+			!(error instanceof EngineInputError) &&
+			!(error instanceof SettingsError)
+		) {
+			throw error;
+		}
 		return {
 			status: "failed",
 			failure: {
 				id: item.id,
 				status: "error",
-				error: { code: error.code, message: error.message },
+				error: withoutUndefinedHint(error),
 			},
 		};
 	}
 };
+
+/** 失敗を JSON にそのまま載る形へ写す。hint が無いときはキーごと落とす。 */
+const withoutUndefinedHint = (
+	error: EngineInputError | SettingsError,
+): BatchItemFailure["error"] =>
+	error.hint === undefined
+		? { code: error.code, message: error.message }
+		: { code: error.code, message: error.message, hint: error.hint };
 
 const successItem = async (
 	id: string,
@@ -173,22 +197,19 @@ const successItem = async (
 
 /**
  * 複数枚をまとめて処理する。
- * [Intended] 設定の解決は 1 枚も処理する前に全項目分を済ませる。設定の指定ミスは呼び出し側の
- * 誤りで、途中まで処理してから伝えても直す手間が増えるだけだから。反対にデコードの失敗は
- * その 1 枚の事情なので、失敗として並びに残し、残りの処理は続ける。
+ * [Policy] 共通設定と共通パレットの誤りは呼び出し全体を失敗にする（全項目に効くため）。
+ * 項目ごとの設定の誤りとデコードの失敗は、その項目だけを error にして残りは処理を続ける。
  */
 export const refineBatchWith = async (
 	service: ProcessingService,
 	request: BatchRequest,
 ): Promise<BatchResult> => {
 	const batchOptions = sharedPaletteOptions(request.sharedPalette);
-	const resolvedSettings = request.items.map((item) =>
-		resolveSettings(mergeSettings(request.settings, item.settings)),
-	);
+	const commonSettings = resolveSettings(request.settings);
 	const prepared: PreparedItem[] = [];
 	for (let index = 0; index < request.items.length; index += 1) {
 		prepared.push(
-			await prepareItem(request.items[index], resolvedSettings[index]),
+			await prepareItem(request.items[index], request.settings, commonSettings),
 		);
 	}
 
