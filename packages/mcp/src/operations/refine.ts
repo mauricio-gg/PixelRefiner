@@ -64,7 +64,7 @@ export const runRefine = (
 			result.png,
 			scale,
 		);
-		const preview = await previewOf(result.image, args.preview !== false);
+		const preview = await previewOf(deps, result.image, args.preview !== false);
 		const value: RefineValue = {
 			output,
 			report: reportAt(result.report, args.detail),

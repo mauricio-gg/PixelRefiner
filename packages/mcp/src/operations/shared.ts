@@ -26,6 +26,12 @@ export type OperationDeps = {
 	engine: PixelRefinerEngine;
 	policy: PathPolicy;
 	log: Logger;
+	/**
+	 * プレビューの作り方の差し替え口。既定は buildPreview。
+	 * [Intended] テストが「書き出しは成功したのにプレビューだけ失敗した」状況を決定的に
+	 * 作れるようにするための差し替え口で、transport は渡さない。
+	 */
+	preview?: (image: RawImage) => Promise<PreviewResult>;
 };
 
 /** 書き出した結果の説明。path は「AI がホスト側の Read で開ける」唯一の手掛かり。 */
@@ -101,12 +107,24 @@ export const writeResultImage = async (
  * プレビューを作る（要らないときは undefined）。
  * [Policy] 元になるのは論理解像度の画像で、書き出した拡大後の画像ではない。プレビューは
  * 512px に収める都合で自前の倍率を選ぶので、拡大後を渡すと二重に拡大した分だけ粗くなる。
+ * [Intended] プレビューの失敗は結果を失わせない。呼ぶのは書き出しが済んだ後なので、ここで
+ * 例外を投げると「ファイルはあるのに失敗と伝わり、やり直すと OUTPUT_EXISTS になる」状態に
+ * なる。載せられなかった理由だけを返し、実物は output.path から読んでもらう。
  */
 export const previewOf = async (
+	deps: OperationDeps,
 	image: RawImage,
 	enabled: boolean,
-): Promise<PreviewResult | undefined> =>
-	enabled ? await buildPreview(image) : undefined;
+): Promise<PreviewResult | undefined> => {
+	if (!enabled) return undefined;
+	try {
+		return await (deps.preview ?? buildPreview)(image);
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		deps.log.warn(`preview failed: ${reason}`);
+		return { included: false, reason: `Preview generation failed: ${reason}` };
+	}
+};
 
 /**
  * 操作 1 回を包み、想定内の失敗を値へ写す。

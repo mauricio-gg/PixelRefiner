@@ -122,6 +122,27 @@ describe("runRefine", () => {
 		expect(existsSync(path.join(directory, "sprite.refined.png"))).toBe(false);
 	});
 
+	it("書き出し後にプレビューが失敗しても結果は失わず、理由だけを載せる", async () => {
+		const { input, deps } = workspace();
+
+		const result = await runRefine(
+			{
+				...deps,
+				preview: () => Promise.reject(new Error("sharp exploded")),
+			},
+			{ input },
+		);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(existsSync(result.value.output.path)).toBe(true);
+		expect(result.value.output.width).toBe(8);
+		const preview = result.value.preview;
+		expect(preview?.included).toBe(false);
+		if (preview === undefined || preview.included) return;
+		expect(preview.reason).toContain("sharp exploded");
+	});
+
 	it("存在しない入力は INPUT_NOT_FOUND を値として返す", async () => {
 		const { directory, deps } = workspace();
 

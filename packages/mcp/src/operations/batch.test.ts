@@ -1,4 +1,10 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { RefineSettings } from "../engine/types";
@@ -170,6 +176,36 @@ describe("runBatch", () => {
 		const [, second] = result.value.items;
 		if (second.status !== "error") throw new Error("2 件目は失敗のはず");
 		expect(second.error.code).toBe("OUTPUT_EXISTS");
+	});
+
+	it("1 件の書き出しが失敗しても、他の件の結果とファイルは残す", async () => {
+		if (process.getuid?.() === 0) return; // root は書き込み権限を無視する
+		const { directory, copy, deps } = workspace();
+		const writable = copy(TARGET, "writable.png");
+		const lockedDirectory = path.join(directory, "locked");
+		mkdirSync(lockedDirectory);
+		const locked = path.join(lockedDirectory, "locked.png");
+		writeFileSync(locked, fixtureBytes(TARGET));
+		chmodSync(lockedDirectory, 0o500);
+
+		const result = await runBatch(deps, {
+			inputs: [writable, locked],
+			settings: BATCH_SETTINGS,
+		});
+		chmodSync(lockedDirectory, 0o700);
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.summary).toStrictEqual({ done: 1, failed: 1 });
+		const [first, second] = result.value.items;
+		if (first.status !== "done") throw new Error("1 件目は成功しているはず");
+		expect(existsSync(first.output.path)).toBe(true);
+		if (second.status !== "error") throw new Error("2 件目は失敗のはず");
+		expect(second.id).toBe(locked);
+		expect(second.error.code).toBe("ENGINE_ERROR");
+		expect(existsSync(path.join(lockedDirectory, "locked.refined.png"))).toBe(
+			false,
+		);
 	});
 
 	it("入力が 0 枚、または 64 枚を超えると INVALID_SETTINGS", async () => {

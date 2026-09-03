@@ -1,5 +1,6 @@
 import type { AnalysisReport, ReportDetail } from "../engine/analysis-report";
 import type {
+	BatchItemResult,
 	BatchItemSuccess,
 	BatchSharedPaletteRequest,
 } from "../engine/engine-batch";
@@ -118,28 +119,67 @@ const prepareInput = async (
 	return { index, id: read.path, bytes: read.bytes, output };
 };
 
+/** 書き出しの段で 1 件ごとに要る材料。 */
+type SettleContext = {
+	deps: OperationDeps;
+	detail: ReportDetail | undefined;
+	scale: number;
+	previewEnabled: boolean;
+};
+
 const doneItem = async (
+	context: SettleContext,
 	prepared: PreparedInput,
 	result: BatchItemSuccess,
-	args: BatchArgs,
-	scale: number,
-	previewEnabled: boolean,
 ): Promise<BatchItemValueSuccess> => {
 	const output = await writeResultImage(
 		prepared.output,
 		result.image,
 		result.png,
-		scale,
+		context.scale,
 	);
-	const preview = await previewOf(result.image, previewEnabled);
+	const preview = await previewOf(
+		context.deps,
+		result.image,
+		context.previewEnabled,
+	);
 	const value: BatchItemValueSuccess = {
 		id: prepared.id,
 		status: "done",
 		output,
-		report: reportAt(result.report, args.detail),
+		report: reportAt(result.report, context.detail),
 		needsAttention: result.needsAttention,
 	};
 	return preview === undefined ? value : { ...value, preview };
+};
+
+/**
+ * エンジンの結果 1 件を、書き出しまで済ませた項目へ変える。
+ * [Intended] 書き出しの失敗（EACCES や ENOSPC など）はその 1 枚の事情なので、ここで
+ * 項目の失敗へ写す。外へ投げると呼び出し全体が失敗になり、既に書き終えた他の枚数の
+ * 結果まで捨ててしまう（ファイルはディスクに残るのに、どれが書けたか伝わらない）。
+ */
+const settleItem = async (
+	context: SettleContext,
+	prepared: PreparedInput,
+	result: BatchItemResult,
+): Promise<BatchItemValue> => {
+	if (result.status !== "done") {
+		return { id: result.id, status: "error", error: result.error };
+	}
+	try {
+		return await doneItem(context, prepared, result);
+	} catch (error) {
+		const failure = toToolFailure(error);
+		context.deps.log.warn(
+			`${prepared.id}: ${failure.code}: ${failure.message}`,
+		);
+		return {
+			id: prepared.id,
+			status: "error",
+			error: failureValue(failure),
+		};
+	}
 };
 
 /**
@@ -196,14 +236,17 @@ export const runBatch = (
 						settings: args.settings,
 						sharedPalette: args.sharedPalette,
 					});
+		const settleContext: SettleContext = {
+			deps,
+			detail: args.detail,
+			scale,
+			previewEnabled,
+		};
 		for (let index = 0; index < batch.items.length; index += 1) {
-			const result = batch.items[index];
 			const prepared = ready[index];
 			items.set(
 				prepared.index,
-				result.status === "done"
-					? await doneItem(prepared, result, args, scale, previewEnabled)
-					: { id: result.id, status: "error", error: result.error },
+				await settleItem(settleContext, prepared, batch.items[index]),
 			);
 		}
 
