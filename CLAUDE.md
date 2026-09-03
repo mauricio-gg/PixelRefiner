@@ -14,8 +14,8 @@ Pixel Refiner (pixel-refiner.app) is a browser-only tool that cleans up AI-gener
 anti-aliasing, detects the pixel grid and resamples to logical resolution, makes backgrounds transparent, reduces
 colours to retro palettes, and exports at x2..x32. Vanilla TypeScript + Vite, no UI framework, Node 24.x, pnpm.
 The fork lives at `github.com/mauricio-gg/PixelRefiner`; upstream is `HappyOnigiri/PixelRefiner` (keep root
-files mergeable). A Node engine + MCP server is planned under `packages/mcp/` (see
-`docs/superpowers/specs/` once written).
+files mergeable). A Node engine, an MCP server and a `pixel-refiner` CLI live under `packages/mcp/` (published
+as `pixel-refiner-mcp`; see `docs/superpowers/specs/2026-09-03-ai-interface-mcp-design.md`).
 
 ## Commands
 
