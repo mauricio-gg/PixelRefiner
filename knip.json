@@ -15,7 +15,7 @@
     "packages/mcp": {
       "entry": ["src/index.ts", "src/**/*.test.ts", "tsdown.config.ts", "vitest.config.ts"],
       "project": ["src/**/*.ts", "*.config.ts"],
-      "ignoreDependencies": ["@modelcontextprotocol/server", "@modelcontextprotocol/client", "sharp", "zod"]
+      "ignoreDependencies": ["@modelcontextprotocol/server", "@modelcontextprotocol/client", "zod"]
     }
   },
   "ignoreIssues": {
