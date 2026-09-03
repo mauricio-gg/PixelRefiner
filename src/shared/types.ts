@@ -87,6 +87,24 @@ export type BackgroundRemovalScope =
 /** 連結判定に対角方向（8 近傍）を含めるか */
 export type Connectivity = "4" | "8";
 
+/** 背景抽出方式。"none" は抽出しない、"auto" は自動推定、"rgb" は明示指定。 */
+export type BgExtractionMethod =
+	| "none"
+	| "auto"
+	| "top-left"
+	| "bottom-left"
+	| "top-right"
+	| "bottom-right"
+	| "rgb";
+
+/** セル色の復元方法。 */
+export type CellSamplingMode =
+	| "legacy-median"
+	| "hard-alpha-medoid"
+	| "alpha-aware-medoid"
+	| "area-weighted"
+	| "edge-aware";
+
 export interface Oklab {
 	L: number; // 明度
 	a: number; // 緑-赤成分

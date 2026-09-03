@@ -1,6 +1,7 @@
 import type { ProcessOptions } from "../core/processor";
 import { createDefaultProcessOptions } from "../core/processor-options";
 import { PROCESS_DEFAULTS } from "../shared/config";
+import { valuesOf } from "../shared/option-values";
 import type { CellScale, DetailLevel, ProcessingMode } from "../shared/types";
 import type { ResourceKey } from "./i18n";
 
@@ -25,6 +26,48 @@ export type QuickReductionMode =
 	| "sfc_bg";
 export type QuickBackground = "keep" | "auto" | "pick";
 export type QuickDithering = "off" | "subtle" | "strong";
+
+/**
+ * かんたん設定の選択肢を実行時に列挙する配列。
+ * [Intended] select-options.test.ts のドリフト検査と、MCP パッケージのスキーマ生成が
+ * 同じ配列を参照する。shared/option-values.ts の valuesOf を使い、union に値を
+ * 増減したときは Record<T, true> リテラル側が型エラーになるようにする。
+ */
+export const QUICK_REDUCTION_MODE_VALUES: readonly QuickReductionMode[] =
+	valuesOf<QuickReductionMode>({
+		auto: true,
+		none: true,
+		"8": true,
+		"16": true,
+		"24": true,
+		"32": true,
+		mono: true,
+		gb_legacy: true,
+		gb_pocket: true,
+		gb_light: true,
+		pico8: true,
+		nes: true,
+		pc98: true,
+		msx: true,
+		c64: true,
+		arne16: true,
+		sfc_sprite: true,
+		sfc_bg: true,
+	});
+
+export const QUICK_BACKGROUND_VALUES: readonly QuickBackground[] =
+	valuesOf<QuickBackground>({
+		keep: true,
+		auto: true,
+		pick: true,
+	});
+
+export const QUICK_DITHERING_VALUES: readonly QuickDithering[] =
+	valuesOf<QuickDithering>({
+		off: true,
+		subtle: true,
+		strong: true,
+	});
 
 export type QuickSettingsState = {
 	processingMode: ProcessingMode;

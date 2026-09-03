@@ -10,6 +10,7 @@
   "project": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "*.config.ts"],
   "ignoreDependencies": ["prettier", "repomix"],
   "ignoreIssues": {
-    "test/quality/**": ["exports", "types"]
+    "test/quality/**": ["exports", "types"],
+    "src/shared/option-values.ts": ["exports"]
   }
 }

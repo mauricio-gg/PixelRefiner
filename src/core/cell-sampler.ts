@@ -2,16 +2,13 @@ import {
 	CELL_COLOR_CORE_LIMITS,
 	SOFT_ALPHA_CELL_LIMITS,
 } from "../shared/config";
-import type { PixelGrid, RawImage } from "../shared/types";
+import type { CellSamplingMode, PixelGrid, RawImage } from "../shared/types";
+
+// [Intended] shared 層が全 union を列挙できるよう、型の定義自体は shared/types.ts へ移した。
+// 既存の import 元（image-operations.ts など）を壊さないよう、ここでは再エクスポートする。
+export type { CellSamplingMode } from "../shared/types";
 
 type RGBA = [number, number, number, number];
-
-export type CellSamplingMode =
-	| "legacy-median"
-	| "hard-alpha-medoid"
-	| "alpha-aware-medoid"
-	| "area-weighted"
-	| "edge-aware";
 
 export type CellSamplerOptions = {
 	mode: Exclude<CellSamplingMode, "legacy-median">;

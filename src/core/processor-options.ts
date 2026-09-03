@@ -10,6 +10,7 @@ import {
 import type {
 	AutoBehaviorSetting,
 	BackgroundRemovalScope,
+	BgExtractionMethod,
 	CellScale,
 	Connectivity,
 	DetailLevel,
@@ -207,14 +208,7 @@ export type ProcessOptions = DetectOptions & {
 	/**
 	 * 背景抽出方式
 	 */
-	bgExtractionMethod?:
-		| "none"
-		| "auto"
-		| "top-left"
-		| "bottom-left"
-		| "top-right"
-		| "bottom-right"
-		| "rgb";
+	bgExtractionMethod?: BgExtractionMethod;
 	/**
 	 * RGB 指定時の背景色（#rrggbb）
 	 */
@@ -365,14 +359,7 @@ export const normalizeProcessOptions = (
 	outlineStyle: OutlineStyle;
 	outlineColor: RGB;
 	floatingMaxPixels: number;
-	bgExtractionMethod:
-		| "none"
-		| "auto"
-		| "top-left"
-		| "bottom-left"
-		| "top-right"
-		| "bottom-right"
-		| "rgb";
+	bgExtractionMethod: BgExtractionMethod;
 	bgRgb?: string;
 	debug?: boolean;
 	debugHook?: ProcessOptions["debugHook"];
