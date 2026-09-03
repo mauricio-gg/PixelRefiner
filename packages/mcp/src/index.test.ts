@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
 	ADVANCED_OPTION_SPECS,
+	createEngine,
 	listOptions,
 	PIXEL_REFINER_MCP_VERSION,
 	resolveSettings,
 	SettingsError,
+	summarizeReport,
 } from "./index";
 
 describe("公開エントリーポイント", () => {
@@ -25,5 +27,13 @@ describe("公開エントリーポイント", () => {
 
 	it("設定エラーの型をエントリーポイントから参照できる", () => {
 		expect(() => resolveSettings({ preset: "nope" })).toThrow(SettingsError);
+	});
+
+	it("エンジンをエントリーポイントから作れる", () => {
+		const engine = createEngine();
+		expect(typeof engine.refine).toBe("function");
+		expect(typeof engine.analyze).toBe("function");
+		expect(typeof engine.refineBatch).toBe("function");
+		expect(typeof summarizeReport).toBe("function");
 	});
 });

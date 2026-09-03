@@ -1,10 +1,40 @@
 /**
  * pixel-refiner-mcp の公開エントリーポイント。
- * [Policy] refine/analyze/batch のエンジン API は Task 6 でここへ足す。現時点では
- * 設定解決（プリセット → かんたん → 詳細）とオプションカタログを公開する。
+ * [Policy] transport（MCP サーバー / CLI）は必ずここ経由でエンジンを使う。engine 配下の
+ * モジュールを直接読み込むと、公開 API として保証していない内部の形に依存してしまう。
  */
 export const PIXEL_REFINER_MCP_VERSION = "0.1.0";
 
+export {
+	type AnalysisReport,
+	type AnalysisReportInput,
+	buildAnalysisReport,
+	type ReportClassification,
+	type ReportContentLoss,
+	type ReportDetail,
+	type ReportGridCandidate,
+	type ReportInput,
+	type ReportOutput,
+	rgbToHex,
+	summarizeReport,
+} from "./engine/analysis-report";
+export {
+	type AnalyzeRequest,
+	type AnalyzeResult,
+	createEngine,
+	type PixelRefinerEngine,
+	type RefineRequest,
+	type RefineResult,
+} from "./engine/engine";
+export type {
+	BatchItemFailure,
+	BatchItemRequest,
+	BatchItemResult,
+	BatchItemSuccess,
+	BatchRequest,
+	BatchResult,
+	BatchSharedPaletteRequest,
+} from "./engine/engine-batch";
 export {
 	ADVANCED_OPTION_SPEC_BY_KEY,
 	ADVANCED_OPTION_SPECS,
@@ -19,7 +49,7 @@ export {
 	type PresetInfo,
 	type QuickKnobInfo,
 } from "./engine/option-listing";
-export { resolveSettings } from "./engine/settings-resolve";
+export { describeOptions, resolveSettings } from "./engine/settings-resolve";
 export {
 	assertAdvancedOptionKey,
 	parseHexColor,
@@ -31,6 +61,8 @@ export {
 	type AdvancedOptionKey,
 	type AdvancedOverrides,
 	type EffectiveOptions,
+	type EngineErrorCode,
+	EngineInputError,
 	type GridDetectionMode,
 	type GridDetectionSpec,
 	INTERNAL_OPTION_KEYS,

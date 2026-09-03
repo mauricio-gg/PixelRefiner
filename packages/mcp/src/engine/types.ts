@@ -114,3 +114,26 @@ export class SettingsError extends Error {
 		this.hint = hint;
 	}
 }
+
+/** transport が ToolFailure へ写すときに使う失敗の種別。 */
+export type EngineErrorCode =
+	| "UNSUPPORTED_INPUT"
+	| "INVALID_SETTINGS"
+	| "ENGINE_ERROR";
+
+/**
+ * 入力そのもの、または処理の実行が成立しないときの失敗。
+ * [Policy] SettingsError と同じく transport は {code, message, hint} をそのまま写す。
+ * 設定の指定ミスは SettingsError、入力バイト列や候補 ID の問題はこちらで表す。
+ */
+export class EngineInputError extends Error {
+	readonly code: EngineErrorCode;
+	readonly hint?: string;
+
+	constructor(code: EngineErrorCode, message: string, hint?: string) {
+		super(message);
+		this.name = "EngineInputError";
+		this.code = code;
+		this.hint = hint;
+	}
+}

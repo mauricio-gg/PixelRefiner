@@ -266,10 +266,21 @@ export const resolveSettings = (
 
 	return {
 		options,
-		effectiveOptions: buildEffectiveOptions(record),
-		resolved: flattenNormalized(normalizeProcessOptions(options)),
+		...describeOptions(options),
 		quick,
 		presetId,
 		adjustments,
 	};
 };
+
+/**
+ * 出来上がった ProcessOptions を、レポートに載せる 2 つの見え方へ写す。
+ * [Intended] 設定解決を経ない refineWithOptions でも同じ形のレポートを返せるように、
+ * resolveSettings の出力の一部を単独で呼べるようにしてある。
+ */
+export const describeOptions = (
+	options: ProcessOptions,
+): Pick<ResolvedSettings, "effectiveOptions" | "resolved"> => ({
+	effectiveOptions: buildEffectiveOptions(asRecord(options)),
+	resolved: flattenNormalized(normalizeProcessOptions(options)),
+});
