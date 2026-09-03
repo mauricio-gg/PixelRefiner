@@ -13,7 +13,7 @@
       "ignoreDependencies": ["prettier", "repomix"]
     },
     "packages/mcp": {
-      "entry": ["src/index.ts", "src/**/*.test.ts", "tsdown.config.ts", "vitest.config.ts"],
+      "entry": ["src/index.ts", "src/mcp.ts", "src/cli.ts", "src/**/*.test.ts", "tsdown.config.ts", "vitest.config.ts"],
       "project": ["src/**/*.ts", "*.config.ts"]
     }
   },

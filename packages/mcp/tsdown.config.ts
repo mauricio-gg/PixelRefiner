@@ -1,9 +1,10 @@
 import { defineConfig } from "tsdown";
 
-// [Policy] entry の mcp / cli は Task 9/10 で src/mcp.ts, src/cli.ts が追加されてから登録する。
-// tsdown は存在しないエントリーファイルをビルドエラーにするため、現時点では index のみを対象にする。
+// [Policy] entry は package.json が公開する 3 つの入口と 1 対 1 で対応させる。index は
+// exports["."]、mcp は bin/pixel-refiner-mcp.mjs、cli は bin/pixel-refiner.mjs が読む。
+// bin が指す先を必ず生成するため、ここへ足し忘れると publish 後にだけ壊れる。
 export default defineConfig({
-	entry: ["src/index.ts"],
+	entry: ["src/index.ts", "src/mcp.ts", "src/cli.ts"],
 	format: "esm",
 	platform: "node",
 	target: "node24",
@@ -18,5 +19,8 @@ export default defineConfig({
 	// ルートのソースの隣へ .d.ts を書き出してしまう。tsconfig.dts.json は rootDir を
 	// リポジトリルートに置くので、出力は dist/types 配下だけで完結する。
 	dts: false,
-	external: ["sharp", /^@modelcontextprotocol\//, "zod"],
+	// [Workaround] 旧 external は tsdown 0.23 で deprecated になったため deps.neverBundle を使う。
+	// sharp はネイティブバイナリを持つので同梱できず、SDK と zod は publish 時に依存として
+	// 解決されるべきものなので、いずれもバンドルへ取り込まない。
+	deps: { neverBundle: ["sharp", /^@modelcontextprotocol\//, "zod"] },
 });
