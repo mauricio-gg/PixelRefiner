@@ -3,7 +3,6 @@
  * [Policy] transport（MCP サーバー / CLI）は必ずここ経由でエンジンを使う。engine 配下の
  * モジュールを直接読み込むと、公開 API として保証していない内部の形に依存してしまう。
  */
-export const PIXEL_REFINER_MCP_VERSION = "0.1.0";
 
 export {
 	type AnalysisReport,
@@ -107,3 +106,10 @@ export {
 	PREVIEW_MAX_BASE64,
 	type PreviewResult,
 } from "./preview";
+export {
+	createPixelRefinerServer,
+	createServerFactory,
+	type PixelRefinerServerOptions,
+} from "./server";
+export { resolveToolCompat, type ToolCompat } from "./tools/define";
+export { PIXEL_REFINER_MCP_VERSION } from "./version";

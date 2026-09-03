@@ -1,0 +1,899 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`refineImageInputSchema > 生成される JSON Schema が変わっていない 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "candidateId": {
+      "description": "Grid candidate id from an analyze_image report; refines with that grid.",
+      "type": "string",
+    },
+    "detail": {
+      "default": "summary",
+      "description": "'full' adds the effective options, the normalised settings and per-candidate subscores to the report.",
+      "enum": [
+        "summary",
+        "full",
+      ],
+      "type": "string",
+    },
+    "input": {
+      "description": "Absolute path to the image file. Relative paths are rejected because this process's working directory is not yours.",
+      "type": "string",
+    },
+    "output": {
+      "description": "Absolute .png path to write; defaults to <stem>.refined.png next to the input.",
+      "type": "string",
+    },
+    "overwrite": {
+      "default": false,
+      "description": "Allow replacing an existing output file.",
+      "type": "boolean",
+    },
+    "preview": {
+      "default": true,
+      "description": "Return the result as an image block scaled to about 512px.",
+      "type": "boolean",
+    },
+    "scale": {
+      "default": 1,
+      "description": "Nearest-neighbour upscale applied to the written PNG only.",
+      "maximum": 32,
+      "minimum": 1,
+      "type": "integer",
+    },
+    "settings": {
+      "additionalProperties": false,
+      "description": "Optional settings. They layer as preset -> quick -> advanced: a preset is a named quick-settings combination, quick is seven knobs that cover most work, and advanced exposes each pipeline option on its own; later layers win, and every 'auto' value is resolved by the engine. Call list_options for the full vocabulary.",
+      "properties": {
+        "advanced": {
+          "additionalProperties": false,
+          "description": "Individual pipeline options, keyed by name; null on a key clears it. Call list_options with section 'advanced' for what each one does.",
+          "properties": {
+            "alphaBorderBackgroundGuard": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "autoGridFromTrimmed": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "autoMaxCellsH": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 2,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "autoMaxCellsW": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 2,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundConfidenceGate": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundDehalo": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundEdgeCleanup": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundMask": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundMaskTolerance": {
+              "anyOf": [
+                {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundRampFollow": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundRemovalRollback": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "backgroundTolerance": {
+              "anyOf": [
+                {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "bgConnectivity": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "4",
+                    "8",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "bgExtractionMethod": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "none",
+                    "auto",
+                    "top-left",
+                    "bottom-left",
+                    "top-right",
+                    "bottom-right",
+                    "rgb",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "bgRemovalScope": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "off",
+                    "selected",
+                    "outer",
+                    "auto",
+                    "all",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "bgRgb": {
+              "anyOf": [
+                {
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "boundaryContrastOverride": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "cellAlphaThreshold": {
+              "anyOf": [
+                {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "cellSamplingMode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "legacy-median",
+                    "hard-alpha-medoid",
+                    "alpha-aware-medoid",
+                    "area-weighted",
+                    "edge-aware",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "cellScale": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "quarter",
+                    "half",
+                    "same",
+                    "double",
+                    "quadruple",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "colorCount": {
+              "anyOf": [
+                {
+                  "maximum": 256,
+                  "minimum": 2,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "convertPixelsH": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "convertPixelsW": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "detailLevel": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "smallest",
+                    "small",
+                    "coarse",
+                    "balanced",
+                    "detailed",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "detectionQuantStep": {
+              "anyOf": [
+                {
+                  "maximum": 128,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "ditherMode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "none",
+                    "floyd-steinberg",
+                    "bayer-2x2",
+                    "bayer-4x4",
+                    "bayer-8x8",
+                    "ordered",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "ditherStrength": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "enableGridDetection": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "fastAutoGridFromTrimmed": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "fixedPalette": {
+              "anyOf": [
+                {
+                  "items": {
+                    "pattern": "^#[0-9a-fA-F]{6}$",
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "floatingMaxPixels": {
+              "anyOf": [
+                {
+                  "maximum": 1000000,
+                  "minimum": 0,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "forcePixelsH": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "forcePixelsW": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "geminiWatermarkRemoval": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "off",
+                    "auto",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "hintPixelsH": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "hintPixelsW": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "keepAspectRatio": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "makeSquare": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "maxSamplesPerCell": {
+              "anyOf": [
+                {
+                  "maximum": 256,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "outlineColor": {
+              "anyOf": [
+                {
+                  "pattern": "^#[0-9a-fA-F]{6}$",
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "outlineStyle": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "none",
+                    "rounded",
+                    "sharp",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "phaseAwareGridSearch": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "postRemoveBackground": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "preRemoveBackground": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "preserveProcessingScale": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "preserveThinFeatures": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "processingMode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "auto",
+                    "refine",
+                    "convert",
+                    "preserve",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "reduceColorMode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "none",
+                    "auto",
+                    "fixed",
+                    "gb_legacy",
+                    "gb_pocket",
+                    "gb_light",
+                    "pico8",
+                    "nes",
+                    "mono",
+                    "pc98",
+                    "msx",
+                    "c64",
+                    "arne16",
+                    "sfc_sprite",
+                    "sfc_bg",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "reduceColors": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "sampleWindow": {
+              "anyOf": [
+                {
+                  "maximum": 9,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "smallAspectGridAlignment": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "auto",
+                    "on",
+                    "off",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "smallComponentBackgroundGate": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "smallComponentMode": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "off",
+                    "light",
+                    "auto",
+                    "strong",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "trimAlphaThreshold": {
+              "anyOf": [
+                {
+                  "maximum": 255,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "trimToContent": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "watermarkSamplingCompat": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "auto",
+                    "on",
+                    "off",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+          },
+          "type": "object",
+        },
+        "gridDetection": {
+          "additionalProperties": false,
+          "description": "Grid handling in one place; 'hint' and 'force' need both width and height in logical pixels.",
+          "properties": {
+            "height": {
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "type": "integer",
+            },
+            "mode": {
+              "description": "'auto' detects, 'hint' seeds the search, 'force' fixes it, 'off' skips it.",
+              "enum": [
+                "auto",
+                "hint",
+                "force",
+                "off",
+              ],
+              "type": "string",
+            },
+            "width": {
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991,
+              "type": "integer",
+            },
+          },
+          "required": [
+            "mode",
+          ],
+          "type": "object",
+        },
+        "preset": {
+          "description": "Built-in preset id; a named quick-settings combination.",
+          "enum": [
+            "auto",
+            "crisp-sprite",
+            "keep-fine-details",
+            "photo-to-pixel",
+            "transparent-icon",
+            "retro-game",
+            "background-art",
+            "illustration-to-pixel-art",
+          ],
+          "type": "string",
+        },
+        "quick": {
+          "additionalProperties": false,
+          "description": "The seven everyday knobs.",
+          "properties": {
+            "background": {
+              "description": "'keep' leaves it, 'auto' estimates it, 'pick' uses backgroundColor.",
+              "enum": [
+                "keep",
+                "auto",
+                "pick",
+              ],
+              "type": "string",
+            },
+            "backgroundColor": {
+              "description": "Background colour as '#rrggbb'; required when background is 'pick'.",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "type": "string",
+            },
+            "cellScale": {
+              "description": "Multiplier on the detected cell size; fixes a 2x or half-size grid.",
+              "enum": [
+                "quarter",
+                "half",
+                "same",
+                "double",
+                "quadruple",
+              ],
+              "type": "string",
+            },
+            "detailLevel": {
+              "description": "Logical resolution preset for the convert route.",
+              "enum": [
+                "smallest",
+                "small",
+                "coarse",
+                "balanced",
+                "detailed",
+              ],
+              "type": "string",
+            },
+            "dithering": {
+              "description": "Dithering strength preset.",
+              "enum": [
+                "off",
+                "subtle",
+                "strong",
+              ],
+              "type": "string",
+            },
+            "processingMode": {
+              "description": "Which pipeline to run; 'auto' classifies the input.",
+              "enum": [
+                "auto",
+                "refine",
+                "convert",
+                "preserve",
+              ],
+              "type": "string",
+            },
+            "reductionMode": {
+              "description": "Colour reduction: 'auto', 'none', a colour count, or a retro palette id.",
+              "enum": [
+                "8",
+                "16",
+                "24",
+                "32",
+                "auto",
+                "none",
+                "mono",
+                "gb_legacy",
+                "gb_pocket",
+                "gb_light",
+                "pico8",
+                "nes",
+                "pc98",
+                "msx",
+                "c64",
+                "arne16",
+                "sfc_sprite",
+                "sfc_bg",
+              ],
+              "type": "string",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "type": "object",
+    },
+  },
+  "required": [
+    "input",
+    "scale",
+    "overwrite",
+    "preview",
+    "detail",
+  ],
+  "type": "object",
+}
+`;

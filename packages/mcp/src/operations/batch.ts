@@ -26,14 +26,19 @@ import {
 	writeResultImage,
 } from "./shared";
 
-const MAX_INPUTS = 64;
+/**
+ * 1 回の呼び出しで受け付ける最大枚数。
+ * [Policy] スキーマ側の上限と同じ定数を使う。二重に書くと片方だけ動いたときに
+ * 「スキーマは通るのに操作層が拒む」ずれが起きる。
+ */
+export const MAX_INPUTS = 64;
 
 /**
  * プレビューを付ける上限枚数。
  * [Policy] 5 枚以上でプレビューを載せると、1 枚あたり 256 KiB の base64 が積み上がって
  * ホストの応答上限を確実に超える。枚数が多いときは output.path から読んでもらう。
  */
-const PREVIEW_ITEM_LIMIT = 4;
+export const PREVIEW_ITEM_LIMIT = 4;
 
 export type BatchArgs = {
 	inputs: readonly string[];
