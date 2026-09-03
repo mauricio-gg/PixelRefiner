@@ -1,0 +1,42 @@
+{
+  "name": "pixel-refiner-mcp",
+  "version": "0.1.0",
+  "description": "Pixel Refiner の画像処理エンジンを公開する MCP サーバーと CLI",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "bin": {
+    "pixel-refiner-mcp": "bin/pixel-refiner-mcp.mjs",
+    "pixel-refiner": "bin/pixel-refiner.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["bin", "dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "sharp": "^0.35",
+    "zod": "^4.2"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@types/node": "24.13.3",
+    "tsdown": "^0.23",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

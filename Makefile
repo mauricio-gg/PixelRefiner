@@ -23,6 +23,11 @@ fix:
 
 build:
 	pnpm run build
+	pnpm --filter pixel-refiner-mcp run build
+	# [Policy] src/core/worker.ts（comlink expose()）が packages/mcp のバンドルへ
+	# 誤って同梱されていないことを保証する。混入すると worker.ts の load 時副作用が
+	# CLI/MCP サーバーのプロセスでも走ってしまう。
+	! grep -q comlink packages/mcp/dist/index.js
 
 quality:
 	pnpm run test:quality:full
@@ -36,6 +41,7 @@ test:
 
 test-unit:
 	pnpm run test:unit
+	pnpm --filter pixel-refiner-mcp test
 
 test-debug:
 	rm -rf tmp/debug
@@ -43,6 +49,7 @@ test-debug:
 
 type-check:
 	pnpm exec tsc --noEmit
+	pnpm --filter pixel-refiner-mcp run type-check
 
 check-ts-rules:
 	python3 scripts/check_ts_rules.py
