@@ -73,3 +73,37 @@ export {
 	type SettingsAdjustment,
 	SettingsError,
 } from "./engine/types";
+export {
+	type FailureValue,
+	type OperationResult,
+	ToolFailure,
+	type ToolFailureCode,
+	toToolFailure,
+} from "./failure";
+export { createLogger, type Logger, type LogLevel } from "./log";
+export {
+	type AnalyzeArgs,
+	type AnalyzeValue,
+	runAnalyze,
+} from "./operations/analyze";
+export {
+	type BatchArgs,
+	type BatchItemValue,
+	type BatchItemValueFailure,
+	type BatchItemValueSuccess,
+	type BatchValue,
+	runBatch,
+} from "./operations/batch";
+export { type ListOptionsArgs, runListOptions } from "./operations/options";
+export {
+	type RefineArgs,
+	type RefineValue,
+	runRefine,
+} from "./operations/refine";
+export type { OperationDeps, OutputInfo } from "./operations/shared";
+export type { PathPolicy } from "./paths";
+export {
+	buildPreview,
+	PREVIEW_MAX_BASE64,
+	type PreviewResult,
+} from "./preview";
