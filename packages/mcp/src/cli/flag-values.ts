@@ -103,12 +103,35 @@ export const numberOf = (
 	return parsed;
 };
 
-/** 位置引数を 1 つ要求する。 */
-export const requirePositional = (
+/**
+ * 位置引数をちょうど 1 つ要求する。
+ * [Policy] 余りは黙って捨てず断る。`refine *.png` はシェルが複数のパスへ展開するので
+ * 起こりやすく、先頭 1 枚だけ処理して 0 で終わると「全部仕上げた」ように見えてしまう。
+ * 複数枚を渡す入口は batch なので、そちらへ誘導する。
+ */
+export const requireSinglePositional = (
 	positionals: readonly string[],
 	label: string,
 ): string => {
 	const value = positionals[0];
 	if (value === undefined) throw new UsageFailure(`${label} is required.`);
+	if (positionals.length > 1) {
+		throw new UsageFailure(
+			`${label} takes one path, but received ${positionals.length}: ` +
+				`${positionals.join(", ")}. Use the batch verb for several images.`,
+		);
+	}
 	return value;
+};
+
+/** 位置引数を取らない verb のためのもの。余りがあれば断る。 */
+export const rejectPositionals = (
+	positionals: readonly string[],
+	verb: string,
+): void => {
+	if (positionals.length === 0) return;
+	throw new UsageFailure(
+		`the ${verb} verb takes no positional arguments, but received: ` +
+			`${positionals.join(", ")}.`,
+	);
 };

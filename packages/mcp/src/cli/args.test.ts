@@ -59,6 +59,28 @@ describe("parseCliArgs", () => {
 		});
 	});
 
+	it("refine と analyze は 2 枚目以降を黙って捨てず batch へ誘導する", () => {
+		expect(parseCliArgs(["refine", "a.png", "b.png"])).toEqual({
+			kind: "usage",
+			message: expect.stringContaining("batch"),
+		});
+		expect(parseCliArgs(["analyze", "a.png", "b.png"])).toEqual({
+			kind: "usage",
+			message: expect.stringContaining("batch"),
+		});
+	});
+
+	it("位置引数を取らない verb は余りを断る", () => {
+		expect(parseCliArgs(["options", "extra"])).toEqual({
+			kind: "usage",
+			message: expect.stringContaining("no positional"),
+		});
+		expect(parseCliArgs(["serve", "extra"])).toEqual({
+			kind: "usage",
+			message: expect.stringContaining("no positional"),
+		});
+	});
+
 	it("--no-preview は preview を false にする", () => {
 		const parsed = parseCliArgs(["refine", "in.png", "--no-preview"]);
 

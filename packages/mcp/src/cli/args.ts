@@ -14,7 +14,8 @@ import {
 	type FlagValues,
 	numberOf,
 	type OptionConfig,
-	requirePositional,
+	rejectPositionals,
+	requireSinglePositional,
 	stringOf,
 	UsageFailure,
 	usageMessageOf,
@@ -140,7 +141,7 @@ const parseRefine = (parsed: Parsed): ParsedCommand => ({
 	kind: "refine",
 	global: parsed.global,
 	args: {
-		input: requirePositional(parsed.positionals, "input"),
+		input: requireSinglePositional(parsed.positionals, "input"),
 		output: stringOf(parsed.values, "output"),
 		settings: settingsOf(parsed),
 		candidateId: stringOf(parsed.values, "candidate"),
@@ -155,7 +156,7 @@ const parseAnalyze = (parsed: Parsed): ParsedCommand => ({
 	kind: "analyze",
 	global: parsed.global,
 	args: {
-		input: requirePositional(parsed.positionals, "input"),
+		input: requireSinglePositional(parsed.positionals, "input"),
 		settings: settingsOf(parsed),
 		detail: detailOf(parsed.values),
 	},
@@ -182,20 +183,26 @@ const parseBatch = (parsed: Parsed): ParsedCommand => {
 	};
 };
 
-const parseOptions = (parsed: Parsed): ParsedCommand => ({
-	kind: "options",
-	global: parsed.global,
-	// [Policy] 節の語彙は runListOptions が持つ。CLI へ写すと同じ一覧が 2 か所になる。
-	args: {
-		section: (stringOf(parsed.values, "section") ?? "all") as OptionsSection,
-	},
-});
+const parseOptions = (parsed: Parsed): ParsedCommand => {
+	rejectPositionals(parsed.positionals, "options");
+	return {
+		kind: "options",
+		global: parsed.global,
+		// [Policy] 節の語彙は runListOptions が持つ。CLI へ写すと同じ一覧が 2 か所になる。
+		args: {
+			section: (stringOf(parsed.values, "section") ?? "all") as OptionsSection,
+		},
+	};
+};
 
-const parseServe = (parsed: Parsed): ParsedCommand => ({
-	kind: "serve",
-	global: parsed.global,
-	args: { compat: enumOf<ToolCompat>(parsed.values, "compat", TOOL_COMPATS) },
-});
+const parseServe = (parsed: Parsed): ParsedCommand => {
+	rejectPositionals(parsed.positionals, "serve");
+	return {
+		kind: "serve",
+		global: parsed.global,
+		args: { compat: enumOf<ToolCompat>(parsed.values, "compat", TOOL_COMPATS) },
+	};
+};
 
 const VERB_PARSERS: Readonly<
 	Record<string, (parsed: Parsed) => ParsedCommand>
