@@ -36,12 +36,21 @@ const resolveLevel = (level: LogLevel | undefined): LogLevel => {
 	return isLogLevel(fromEnv) ? fromEnv : DEFAULT_LEVEL;
 };
 
+/** 1 行を書き出す先。既定は process.stderr。 */
+export type LogSink = (line: string) => void;
+
+const processStderr: LogSink = (line) => void process.stderr.write(line);
+
 /**
  * stderr だけに書くロガーを作る。
  * [Policy] stdout は MCP サーバーではプロトコル、CLI では JSON 出力そのものなので、
- * ログを 1 行でも混ぜると相手側のパースが壊れる。書き先は process.stderr に固定する。
+ * ログを 1 行でも混ぜると相手側のパースが壊れる。書き先の既定は process.stderr に固定し、
+ * 差し替えられるのは「自分のストリームを捕まえている呼び出し側」（CLI の main）だけにする。
  */
-export const createLogger = (level?: LogLevel): Logger => {
+export const createLogger = (
+	level?: LogLevel,
+	sink: LogSink = processStderr,
+): Logger => {
 	const resolved = resolveLevel(level);
 	const threshold = LEVEL_RANK[resolved];
 	const write = (
@@ -49,7 +58,7 @@ export const createLogger = (level?: LogLevel): Logger => {
 		message: string,
 	) => {
 		if (LEVEL_RANK[messageLevel] > threshold) return;
-		process.stderr.write(`[pixel-refiner] ${messageLevel} ${message}\n`);
+		sink(`[pixel-refiner] ${messageLevel} ${message}\n`);
 	};
 	return {
 		error: (message) => write("error", message),

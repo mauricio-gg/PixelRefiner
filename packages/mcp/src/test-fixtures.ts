@@ -11,7 +11,9 @@ import type { OperationDeps } from "./operations/shared";
  * [Policy] 本番のバンドル対象（src/index.ts から辿れる範囲）には入れない。ここを経由するのは
  * テストだけなので、リポジトリのフィクスチャ参照と一時ディレクトリの後始末をまとめておく。
  */
-const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+export const REPOSITORY_ROOT = fileURLToPath(
+	new URL("../../../", import.meta.url),
+);
 
 const repositoryPath = (relative: string): string =>
 	path.join(REPOSITORY_ROOT, relative);
