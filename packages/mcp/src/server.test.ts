@@ -1,6 +1,6 @@
 import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { CallToolResult, Tool } from "@modelcontextprotocol/client";
+import type { CallToolResult } from "@modelcontextprotocol/client";
 import {
 	Client,
 	StreamableHTTPClientTransport,
@@ -64,18 +64,21 @@ const textOf = (result: CallToolResult): string => {
 	return block.text;
 };
 
-const imageOf = (result: CallToolResult) => {
-	const block = result.content[1];
-	if (block === undefined || block.type !== "image") {
-		throw new Error(`2 番目のブロックが画像ではない: ${block?.type}`);
-	}
-	return block;
-};
+/** テキストブロックに続く画像ブロック。並び順もここで確かめる。 */
+const imagesOf = (result: CallToolResult) =>
+	result.content.slice(1).map((block, index) => {
+		if (block.type !== "image") {
+			throw new Error(
+				`${index + 2} 番目のブロックが画像ではない: ${block.type}`,
+			);
+		}
+		return block;
+	});
 
-const toolByName = (tools: Tool[], name: string): Tool => {
-	const tool = tools.find((entry) => entry.name === name);
-	if (tool === undefined) throw new Error(`${name} が公開されていない`);
-	return tool;
+const imageOf = (result: CallToolResult) => {
+	const [image] = imagesOf(result);
+	if (image === undefined) throw new Error("画像ブロックが無い");
+	return image;
 };
 
 describe("createPixelRefinerServer", () => {
@@ -149,6 +152,30 @@ describe("createPixelRefinerServer", () => {
 		expect(result.structuredContent).toBeDefined();
 	});
 
+	it("プレビューの base64 はテキストにも structuredContent にも入らない", async () => {
+		const { client, input } = await connect();
+
+		const result = await client.callTool({
+			name: "refine_image",
+			arguments: { input },
+		});
+
+		const text = textOf(result);
+		const image = imageOf(result);
+		expect(image.data.length).toBeGreaterThan(1000);
+		expect(text).not.toContain(image.data.slice(0, 64));
+		expect(text).not.toContain("base64");
+		const value = JSON.parse(text) as { preview: Record<string, unknown> };
+		expect(value.preview).toEqual({
+			included: true,
+			scale: 64,
+			width: 512,
+			height: 512,
+			bytes: expect.any(Number),
+		});
+		expect(result.structuredContent).toEqual(value);
+	});
+
 	it("2 回目は overwrite が無いと OUTPUT_EXISTS の isError になる", async () => {
 		const { client, input } = await connect();
 
@@ -215,6 +242,35 @@ describe("createPixelRefinerServer", () => {
 		// preview の既定は false なので画像ブロックは付かない
 		expect(result.content.length).toBe(1);
 	});
+
+	it("refine_batch の preview は 1 件 1 ブロックで、base64 はテキストに入らない", async () => {
+		const { client, directory, input } = await connect();
+		const second = path.join(directory, "second.png");
+		writeFileSync(second, fixtureBytes(FIXTURE));
+
+		const result = await client.callTool({
+			name: "refine_batch",
+			arguments: { inputs: [input, second], preview: true },
+		});
+
+		expect(result.isError).toBeFalsy();
+		const images = imagesOf(result);
+		expect(images.length).toBe(2);
+		const text = textOf(result);
+		for (const image of images) {
+			expect(image.mimeType).toBe("image/png");
+			expect(text).not.toContain(image.data.slice(0, 64));
+		}
+		expect(text).not.toContain("base64");
+		const value = JSON.parse(text) as {
+			items: { preview?: Record<string, unknown> }[];
+		};
+		expect(value.items.map((item) => item.preview?.included)).toEqual([
+			true,
+			true,
+		]);
+		expect(result.structuredContent).toEqual(value);
+	});
 });
 
 describe("compat: minimal", () => {
@@ -222,7 +278,9 @@ describe("compat: minimal", () => {
 		const { client, input } = await connect("minimal");
 
 		const { tools } = await client.listTools();
-		const refine = toolByName(tools, "refine_image");
+		const refine = tools.find((tool) => tool.name === "refine_image");
+		if (refine === undefined)
+			throw new Error("refine_image が公開されていない");
 		expect(refine.outputSchema).toBeUndefined();
 		expect(refine.annotations).toBeUndefined();
 		expect(refine.title).toBeUndefined();

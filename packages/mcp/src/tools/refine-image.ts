@@ -9,6 +9,7 @@ import {
 	toolConfig,
 	WRITE_ANNOTATIONS,
 } from "./define";
+import { refineMetadata } from "./metadata";
 import { refineImageOutputSchema } from "./output-schemas";
 import {
 	refineImageInputSchema,
@@ -60,8 +61,10 @@ export const registerRefineImage = (
 					preview: args.preview,
 					detail: args.detail,
 				});
+				// [Intended] テキストへ載せるのは base64 を外した形。実バイト列は
+				// previews から画像ブロックとして 1 回だけ運ぶ。
 				return result.ok
-					? okResult(result.value, {
+					? okResult(refineMetadata(result.value), {
 							compat,
 							previews: [result.value.preview],
 						})

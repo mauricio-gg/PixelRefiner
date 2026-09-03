@@ -35,7 +35,7 @@ const reportSchema = z
 const previewSchema = z
 	.looseObject({ included: z.boolean() })
 	.describe(
-		"Whether a preview image block came with this result, and why not when it did not.",
+		"Whether a preview image block came with this result, and why not when it did not; the image bytes travel in the image block, never here.",
 	);
 
 export const refineImageOutputSchema = z.looseObject({

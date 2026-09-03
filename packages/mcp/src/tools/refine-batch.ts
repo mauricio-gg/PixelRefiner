@@ -11,6 +11,7 @@ import {
 	toolConfig,
 	WRITE_ANNOTATIONS,
 } from "./define";
+import { batchMetadata } from "./metadata";
 import { refineBatchOutputSchema } from "./output-schemas";
 import {
 	refineBatchInputSchema,
@@ -63,8 +64,9 @@ export const registerRefineBatch = (
 					preview: args.preview,
 					detail: args.detail,
 				});
+				// [Intended] refine_image と同じく、base64 は画像ブロックだけが運ぶ。
 				return result.ok
-					? okResult(result.value, {
+					? okResult(batchMetadata(result.value), {
 							compat,
 							previews: previewsOf(result.value),
 						})
