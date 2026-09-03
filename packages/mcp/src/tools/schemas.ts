@@ -230,7 +230,9 @@ export const refineBatchInputSchema = z.strictObject({
 		})
 		.optional()
 		.describe(
-			"Quantise every image against one palette built from all of them.",
+			"Quantise every image against one palette built from all of them. The shared palette " +
+				"overrides each item's colour-reduction settings and fixedPalette, and outlines are " +
+				"not drawn on the pass that determines the palette.",
 		),
 	settings: settingsField,
 	scale: scaleField,

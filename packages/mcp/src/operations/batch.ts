@@ -12,7 +12,7 @@ import {
 	ToolFailure,
 	toToolFailure,
 } from "../failure";
-import { resolveOutputPath } from "../paths";
+import { resolveOutputPath, tryResolvePath } from "../paths";
 import type { PreviewResult } from "../preview";
 import {
 	DEFAULT_SUFFIX,
@@ -222,7 +222,10 @@ export const runBatch = (
 				ready.push(await prepareInput(context, inputs[index], index));
 			} catch (error) {
 				items.set(index, {
-					id: inputs[index],
+					// [Intended] 成功した項目の ID は解決済みの絶対パスなので、失敗した項目も
+					// 解決できる書き方なら同じ形にする。1 回の応答で ID の形が 2 通りになると、
+					// 呼び出し側が入力と項目を突き合わせられない。
+					id: tryResolvePath(deps.policy, inputs[index]) ?? inputs[index],
 					status: "error",
 					error: failureValue(toToolFailure(error)),
 				});

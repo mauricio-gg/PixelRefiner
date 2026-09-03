@@ -11,6 +11,7 @@ import type { RefineSettings } from "../engine/types";
 import { decodeImage } from "../io/image-io";
 import { fixtureBytes, operationDeps, tempDirs } from "../test-fixtures";
 import { runBatch } from "./batch";
+import type { OperationDeps } from "./shared";
 
 const TARGET = "test/fixtures/quality_prf420_shared_palette_target.png";
 const COMPANION = "test/fixtures/quality_prf420_shared_palette_companion.png";
@@ -221,6 +222,50 @@ describe("runBatch", () => {
 		});
 		expect(tooMany.ok).toBe(false);
 		if (!tooMany.ok) expect(tooMany.failure.code).toBe("INVALID_SETTINGS");
+	});
+
+	it("CLI モードでは成功も失敗も同じ絶対パスを ID にする", async () => {
+		const { directory, copy } = workspace();
+		copy(TARGET, "target.png");
+		// [Intended] CLI は相対パスを cwd から解決するので、指定はファイル名のまま渡す。
+		const deps: OperationDeps = {
+			...operationDeps(directory),
+			policy: { mode: "cli", cwd: directory },
+		};
+
+		const result = await runBatch(deps, {
+			inputs: ["target.png", "missing.png"],
+			outputDir: path.join(directory, "out"),
+			settings: BATCH_SETTINGS,
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		expect(result.value.items.map((item) => item.status)).toStrictEqual([
+			"done",
+			"error",
+		]);
+		expect(result.value.items.map((item) => item.id)).toStrictEqual([
+			path.join(directory, "target.png"),
+			path.join(directory, "missing.png"),
+		]);
+	});
+
+	it("共通パレットが無効なのにつまみだけ渡されたら INVALID_SETTINGS", async () => {
+		const { directory, copy, deps } = workspace();
+		const target = copy(TARGET, "target.png");
+
+		const result = await runBatch(deps, {
+			inputs: [target],
+			outputDir: path.join(directory, "out"),
+			settings: BATCH_SETTINGS,
+			sharedPalette: { enabled: false, colorCount: 4 },
+		});
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.failure.code).toBe("INVALID_SETTINGS");
+		expect(result.failure.message).toContain("sharedPalette.enabled: true");
 	});
 
 	it("共通設定が不正なら呼び出し全体を INVALID_SETTINGS にする", async () => {

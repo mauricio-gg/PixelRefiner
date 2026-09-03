@@ -52,6 +52,48 @@ describe("parseCliArgs", () => {
 		});
 	});
 
+	it("候補 ID は --candidate-id でも --candidate でも読める", () => {
+		const expected = {
+			kind: "refine",
+			global: GLOBAL,
+			args: { input: "in.png", candidateId: "grid-2" },
+		};
+
+		expect(
+			parseCliArgs(["refine", "in.png", "--candidate-id", "grid-2"]),
+		).toEqual(expected);
+		// [Intended] --candidate は文書に載せない別名。先に案内した綴りなので受け続ける。
+		expect(parseCliArgs(["refine", "in.png", "--candidate", "grid-2"])).toEqual(
+			expected,
+		);
+		expect(
+			parseCliArgs([
+				"refine",
+				"in.png",
+				"--candidate-id",
+				"grid-2",
+				"--candidate",
+				"grid-2",
+			]),
+		).toEqual(expected);
+	});
+
+	it("--candidate-id と --candidate が食い違えば使い方エラー", () => {
+		expect(
+			parseCliArgs([
+				"refine",
+				"in.png",
+				"--candidate-id",
+				"grid-1",
+				"--candidate",
+				"grid-2",
+			]),
+		).toEqual({
+			kind: "usage",
+			message: expect.stringContaining("--candidate-id"),
+		});
+	});
+
 	it("refine の入力が無ければ使い方エラー", () => {
 		expect(parseCliArgs(["refine"])).toEqual({
 			kind: "usage",
@@ -132,7 +174,7 @@ describe("parseCliArgs", () => {
 			"reduceColors=true",
 			"--grid",
 			"force:32x24",
-			"--candidate",
+			"--candidate-id",
 			"grid-1",
 			"--detail",
 			"full",

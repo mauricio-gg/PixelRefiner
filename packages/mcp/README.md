@@ -65,7 +65,7 @@ lost — the text block always carries the whole JSON result.
 | --- | --- |
 | `analyze_image` | Reports route, detected grid, rival grid candidates and warnings. Writes nothing; call it first. |
 | `refine_image` | Refines one image, writes the PNG, returns the report and a preview image block. |
-| `refine_batch` | Refines up to 64 images, optionally quantising all of them against one shared palette. |
+| `refine_batch` | Refines up to 64 images, optionally quantising all of them against one shared palette. The shared palette overrides each item's colour-reduction settings and `fixedPalette`, and outlines are not drawn on the pass that determines the palette. |
 | `list_options` | The whole settings vocabulary: preset ids, retro palettes, quick knobs, advanced options. |
 
 Settings layer as **preset → quick → advanced**, and later layers win. A preset is a named quick-settings
@@ -98,13 +98,13 @@ re-reading the output.
 | `--settings <file.json>` | refine, analyze, batch | `{preset, quick, advanced, gridDetection}` from a file; the flags above override it key by key. |
 | `--grid <spec>` | refine, analyze, batch | `off`, `auto`, `hint:WxH` or `force:WxH`. |
 | `--output <path>` | refine | Result PNG; default is `<stem>.refined.png` next to the input. |
-| `--candidate <id>` | refine | A grid candidate id from `analyze`. |
+| `--candidate-id <id>` | refine | A grid candidate id from `analyze`. |
 | `--scale <n>` | refine, batch | Nearest-neighbour export scale, 1..32 (default 1). |
 | `--overwrite` | refine, batch | Replace an existing output file. |
 | `--no-preview` / `--preview` | refine / batch | Previews are on for `refine`, off for `batch` (and only honoured for 4 inputs or fewer). |
 | `--detail summary\|full` | refine, analyze, batch | `full` adds `effectiveOptions` and per-candidate subscores. |
 | `--output-dir <dir>`, `--suffix <s>` | batch | Where results go and the default-name suffix (default `.refined`). |
-| `--shared-palette` | batch | One palette for every image; tune it with `--palette-colors`, `--palette-dither`, `--palette-dither-strength`. |
+| `--shared-palette` | batch | One palette for every image; tune it with `--palette-colors`, `--palette-dither`, `--palette-dither-strength`. It overrides each image's colour-reduction settings and `fixedPalette`, and outlines are not drawn on the pass that determines the palette. |
 | `--section <name>` | options | `all`, `presets`, `palettes`, `quick` or `advanced` (default `all`). |
 | `--compat <mode>` | serve | `full` or `minimal` (see Codex above). |
 | `--compact`, `--verbose` | all | One-line JSON; info-level logging to stderr. |
@@ -144,8 +144,13 @@ pnpm --filter pixel-refiner-mcp build
 pnpm --filter pixel-refiner-mcp test
 ```
 
-From the repository root, `make ci` runs the whole check suite (type-check, unit tests, build, architecture and
-dead-code checks) for the web app and this package together.
+From the repository root, `make ci` covers this package with type-check, unit tests, the build (including the guard
+that keeps comlink out of the bundle), the architecture and TypeScript-rule checks, dead-code detection, and the
+line-length and file-length limits. The duplication, empty-block and unused-member checks currently scan the web
+app's `src/` only, so they do not see this package yet.
+
+On the MCP side, a value that the argument schema rejects comes back as the SDK's plain-text `isError` message
+rather than the `{"failure": {...}}` JSON that the operations return; only failures past the schema carry a code.
 
 ## License
 

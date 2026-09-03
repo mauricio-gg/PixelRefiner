@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
@@ -35,7 +35,10 @@ type Run = {
  * [Intended] cwd はリポジトリルート。CLI は相対パスを cwd から解決するので、
  * フィクスチャをリポジトリからの相対パスのまま渡せる。
  */
-const runCli = async (argv: readonly string[]): Promise<Run> => {
+const runCli = async (
+	argv: readonly string[],
+	cwd: string = REPOSITORY_ROOT,
+): Promise<Run> => {
 	let stdout = "";
 	let stderr = "";
 	const exitCode = await main([...argv], {
@@ -45,7 +48,7 @@ const runCli = async (argv: readonly string[]): Promise<Run> => {
 		stderr: (text) => {
 			stderr += text;
 		},
-		cwd: REPOSITORY_ROOT,
+		cwd,
 	});
 	return { exitCode, stdout, stderr, json: () => JSON.parse(stdout) };
 };
@@ -138,6 +141,39 @@ describe("main", () => {
 		expect(run.exitCode).toBe(2);
 		expect(run.stderr).toContain("Usage: pixel-refiner");
 		expect((run.json() as FailureOutput).failure.code).toBe("INVALID_SETTINGS");
+	});
+
+	it("使い方エラーの JSON も --compact に従う", async () => {
+		const run = await runCli(["refine", FIXTURE, "--sharpen", "--compact"]);
+
+		expect(run.exitCode).toBe(2);
+		expect(run.stdout.trimEnd().split("\n")).toHaveLength(1);
+	});
+
+	it("--settings は io.cwd から解決する", async () => {
+		const directory = directories.create();
+		writeFileSync(
+			path.join(directory, "job.json"),
+			JSON.stringify({
+				quick: { processingMode: "preserve" },
+				gridDetection: { mode: "off" },
+			}),
+		);
+
+		const run = await runCli(
+			[
+				"analyze",
+				path.join(REPOSITORY_ROOT, FIXTURE),
+				"--settings",
+				"job.json",
+			],
+			directory,
+		);
+
+		expect(run.exitCode).toBe(0);
+		expect((run.json() as { report: { route: string } }).report.route).toBe(
+			"preserve",
+		);
 	});
 
 	it("設定の値が語彙に無ければ INVALID_SETTINGS で 2 になる", async () => {

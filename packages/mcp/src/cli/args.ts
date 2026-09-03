@@ -72,6 +72,7 @@ const VERB_OPTIONS: Readonly<Record<string, OptionConfig>> = {
 		...SETTINGS_OPTIONS,
 		...WRITE_OPTIONS,
 		output: { type: "string" },
+		"candidate-id": { type: "string" },
 		candidate: { type: "string" },
 	},
 	analyze: {
@@ -132,6 +133,23 @@ const sharedPaletteOf = (values: FlagValues): BatchArgs["sharedPalette"] => {
 	return undefined;
 };
 
+/**
+ * 格子候補の ID。
+ * [Intended] 公開する綴りは refine_image の candidateId と揃えた --candidate-id。
+ * --candidate は先に案内してしまった綴りなので、文書には載せないまま受け続ける。
+ * 両方が別々の値を指したときだけ、どちらが効いたか説明できないので断る。
+ */
+const candidateIdOf = (values: FlagValues): string | undefined => {
+	const primary = stringOf(values, "candidate-id");
+	const alias = stringOf(values, "candidate");
+	if (primary !== undefined && alias !== undefined && primary !== alias) {
+		throw new UsageFailure(
+			"--candidate-id and --candidate were given different values; pass only one.",
+		);
+	}
+	return primary ?? alias;
+};
+
 const settingsOf = (parsed: Parsed) =>
 	parsed.read === undefined
 		? buildSettings(parsed.values)
@@ -144,7 +162,7 @@ const parseRefine = (parsed: Parsed): ParsedCommand => ({
 		input: requireSinglePositional(parsed.positionals, "input"),
 		output: stringOf(parsed.values, "output"),
 		settings: settingsOf(parsed),
-		candidateId: stringOf(parsed.values, "candidate"),
+		candidateId: candidateIdOf(parsed.values),
 		scale: numberOf(parsed.values, "scale"),
 		overwrite: booleanOf(parsed.values, "overwrite"),
 		preview: booleanOf(parsed.values, "preview"),

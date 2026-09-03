@@ -19,11 +19,21 @@ import {
 	toRefineSettings,
 } from "./schemas";
 
+/**
+ * 共通パレットの効き方。
+ * [Policy] スキーマの describe と同じ 1 文を使う。ツール説明と項目の説明で言い回しが
+ * ずれると、どちらが正しい挙動なのか読み手が判断できない。
+ */
+const SHARED_PALETTE_CAVEAT =
+	"the shared palette overrides each item's colour-reduction settings and fixedPalette, and outlines are not " +
+	"drawn on the pass that determines the palette.";
+
 const DESCRIPTION = [
 	"Refine several images in one call, optionally quantising all of them against one shared palette so a set of",
 	"sprites stays consistent. A failure on one file is reported in that item and does not stop the others.",
 	"Each result is written next to its input as <stem>.refined.png unless outputDir or suffix say otherwise, and",
 	"items[].output.path is the file to read.",
+	`With sharedPalette on, ${SHARED_PALETTE_CAVEAT}`,
 	SETTINGS_HINT,
 ].join(" ");
 

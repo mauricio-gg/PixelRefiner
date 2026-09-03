@@ -40,13 +40,27 @@ const PNG_SIGNATURE = Buffer.from([
 /** シグネチャ 8 + チャンク長 4 + "IHDR" 4 + 幅 4 + 高さ 4。 */
 const PNG_HEADER_BYTES = 24;
 
+/**
+ * 検査をせずにパスを解決する（解決できない書き方なら undefined）。
+ * [Intended] 失敗した項目の ID も成功した項目と同じ絶対パスの形で返すために、
+ * requireAbsolute から解決だけを切り出してある。存在確認はしない。
+ */
+export const tryResolvePath = (
+	policy: PathPolicy,
+	value: string,
+): string | undefined => {
+	if (path.isAbsolute(value)) return path.resolve(value);
+	if (policy.mode === "cli") return path.resolve(policy.cwd, value);
+	return undefined;
+};
+
 const requireAbsolute = (
 	policy: PathPolicy,
 	value: string,
 	label: string,
 ): string => {
-	if (path.isAbsolute(value)) return path.resolve(value);
-	if (policy.mode === "cli") return path.resolve(policy.cwd, value);
+	const resolved = tryResolvePath(policy, value);
+	if (resolved !== undefined) return resolved;
 	throw new ToolFailure(
 		"INVALID_SETTINGS",
 		`${label} must be an absolute path, but received "${value}". ` +

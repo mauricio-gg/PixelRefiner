@@ -13,6 +13,7 @@ import {
 	serveCommand,
 	usageOutcome,
 } from "./commands";
+import { settingsReaderAt } from "./settings-flags";
 
 /**
  * CLI が触る外の世界。
@@ -50,7 +51,7 @@ const USAGE = [
 	"",
 	"refine:",
 	"  --output <path>           Result PNG (default <stem>.refined.png next to the input).",
-	"  --candidate <id>          Grid candidate id taken from `analyze`.",
+	"  --candidate-id <id>       Grid candidate id taken from `analyze`.",
 	"  --scale <n>               Nearest-neighbour export scale, 1..32 (default 1).",
 	"  --overwrite               Replace an existing output file.",
 	"  --no-preview              Leave the base64 PNG preview out of the JSON.",
@@ -128,7 +129,7 @@ export const main = async (
 	argv: readonly string[],
 	io: CliIo = processIo(),
 ): Promise<number> => {
-	const parsed = parseCliArgs(argv);
+	const parsed = parseCliArgs(argv, settingsReaderAt(io.cwd));
 	if (parsed.kind === "help") {
 		io.stdout(`${USAGE}\n`);
 		return EXIT_OK;
@@ -140,7 +141,10 @@ export const main = async (
 	if (parsed.kind === "usage") {
 		const outcome = usageOutcome(parsed.message);
 		io.stderr(`${USAGE}\n\n[pixel-refiner] error ${parsed.message}\n`);
-		io.stdout(`${stringify(outcome.output, false)}\n`);
+		// [Intended] 使い方エラーの JSON も --compact に従う。ここだけ整形すると、
+		// 1 行 1 件で読む前提のスクリプトが失敗のときだけ複数行を受け取ってしまう。
+		// 解析前の失敗なので、--help と同じく argv を直接見る。
+		io.stdout(`${stringify(outcome.output, argv.includes("--compact"))}\n`);
 		return outcome.exitCode;
 	}
 	const outcome = await dispatch(parsed, io);

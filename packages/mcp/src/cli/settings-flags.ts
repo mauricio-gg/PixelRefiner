@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { QuickSettingsState } from "../../../../src/browser/quick-settings";
 import { ADVANCED_OPTION_SPEC_BY_KEY } from "../engine/option-catalog";
 import type {
@@ -123,6 +124,16 @@ export type SettingsFileReader = (filePath: string) => string;
 
 const defaultSettingsReader: SettingsFileReader = (filePath) =>
 	readFileSync(filePath, "utf8");
+
+/**
+ * cwd を基準に --settings のファイルを読む口を作る。
+ * [Intended] 入力パスは CliIo.cwd から解決されるので、設定ファイルも同じ基準に揃える。
+ * process.cwd() をそのまま見ると、cwd を差し替えたときだけ設定ファイルが別の場所を指す。
+ */
+export const settingsReaderAt =
+	(cwd: string): SettingsFileReader =>
+	(filePath) =>
+		readFileSync(path.resolve(cwd, filePath), "utf8");
 
 const readSettingsFile = (
 	filePath: string,

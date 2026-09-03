@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
 	ADVANCED_OPTION_SPECS,
@@ -17,9 +18,19 @@ import {
 	toToolFailure,
 } from "./index";
 
+/**
+ * package.json の version。
+ * [Intended] 定数側にリテラルを書き写して比べると、両方を直し忘れたときに気付けない。
+ * 公開時に効くのは package.json なので、そちらを読んで突き合わせる。
+ */
+const packageVersion = (): string => {
+	const raw = readFileSync(new URL("../package.json", import.meta.url), "utf8");
+	return (JSON.parse(raw) as { version: string }).version;
+};
+
 describe("公開エントリーポイント", () => {
-	it("プレースホルダーのバージョン文字列を公開する", () => {
-		expect(PIXEL_REFINER_MCP_VERSION).toBe("0.1.0");
+	it("公開するバージョンが package.json と一致する", () => {
+		expect(PIXEL_REFINER_MCP_VERSION).toBe(packageVersion());
 	});
 
 	it("設定解決をエントリーポイントから呼べる", () => {

@@ -93,9 +93,27 @@ const mergeSettings = (
 	item: RefineSettings | undefined,
 ): RefineSettings => ({ ...common, ...item });
 
+/**
+ * 共通パレットの指定を core の一括処理オプションへ写す。
+ * [Intended] enabled が false のままつまみだけを渡されたら断る。効かない指定を黙って
+ * 受けると、共通パレットが効いた結果を期待した呼び出し側が気付けない。CLI 側
+ * （--palette-* に --shared-palette が要る）と同じ扱いにそろえる。
+ */
 const sharedPaletteOptions = (
 	spec: BatchSharedPaletteRequest | undefined,
 ): BatchProcessingOptions => {
+	if (
+		spec !== undefined &&
+		spec.enabled !== true &&
+		(spec.colorCount !== undefined ||
+			spec.ditherMode !== undefined ||
+			spec.ditherStrength !== undefined)
+	) {
+		throw new SettingsError(
+			"sharedPalette.colorCount, ditherMode and ditherStrength only apply when the shared palette is on; " +
+				"set sharedPalette.enabled: true, or drop those keys.",
+		);
+	}
 	const ditherMode = spec?.ditherMode ?? PROCESS_DEFAULTS.ditherMode;
 	if (!DITHER_MODE_VALUES.includes(ditherMode)) {
 		throw new SettingsError(
