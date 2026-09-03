@@ -16,6 +16,7 @@ import {
 	PROCESSING_MODE_VALUES,
 	REDUCE_COLOR_MODE_VALUES,
 	SMALL_COMPONENT_REMOVAL_MODE_VALUES,
+	valuesOf,
 } from "../shared/option-values";
 import type { AdvancedConvertSizeMode } from "./advanced-processing-controls";
 import {
@@ -30,10 +31,6 @@ const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 // [Intended] index.html は partials/ へ分割されているので、ビルドと同じ取り込みを
 // 済ませてから走査する。どのパーシャルにある select も検査対象に残すため。
 const html = readHtmlWithIncludes(REPO_ROOT, "index.html");
-
-// 型の値集合をそのまま列挙する。値の増減が型エラーになるので取りこぼさない。
-const valuesOf = <T extends string>(values: Record<T, true>): string[] =>
-	Object.keys(values);
 
 type SelectSpec = {
 	/** option 値の突き合わせ先になる値集合 */

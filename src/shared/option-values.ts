@@ -1,7 +1,6 @@
 import {
 	CELL_SCALE_FACTORS,
 	CONVERT_DETAIL_SCALES,
-	GRID_SIGNAL_DEFAULTS,
 	RETRO_PALETTES,
 } from "./config";
 import type {
@@ -133,6 +132,3 @@ export const REDUCE_COLOR_MODE_VALUES: readonly string[] = [
 	"fixed",
 	...RETRO_PALETTE_IDS,
 ];
-
-export const GRID_SIGNAL_NAMES: readonly string[] =
-	Object.keys(GRID_SIGNAL_DEFAULTS);
