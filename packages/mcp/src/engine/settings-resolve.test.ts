@@ -45,6 +45,37 @@ describe("resolveSettings: プリセット / かんたん / 詳細の同値性",
 		);
 	});
 
+	it.each(["sampleWindow", "bgRemovalScope", "trimToContent"] as const)(
+		"null で消した %s は往復しても消えたまま",
+		(key) => {
+			const first = resolveSettings({ advanced: { [key]: null } });
+			expect(first.effectiveOptions[key]).toBeNull();
+			const second = resolveSettings({ advanced: first.effectiveOptions });
+			expect(second.effectiveOptions).toEqual(first.effectiveOptions);
+			expect(second.options).not.toHaveProperty(key);
+			expect(normalizeProcessOptions(second.options)).toEqual(
+				normalizeProcessOptions(first.options),
+			);
+		},
+	);
+
+	it("土台が入れないキーは消えていても null を置かない", () => {
+		const resolved = resolveSettings({ advanced: { colorCount: null } });
+		expect(resolved.effectiveOptions).not.toHaveProperty("colorCount");
+		expect(resolved.effectiveOptions).not.toHaveProperty("fixedPalette");
+		expect(resolved.effectiveOptions).not.toHaveProperty("forcePixelsW");
+	});
+
+	it("resolved は detect の控えを持たず 1 段に畳まれている", () => {
+		const resolved = resolveSettings({ advanced: { colorCount: 9999 } });
+		expect(resolved.resolved.detect).toBeUndefined();
+		// [Intended] 畳んだ結果は正規化後の値（切り詰め済み）が 1 つだけ残る。
+		expect(resolved.resolved.colorCount).toBe(PROCESS_RANGES.colorCount.max);
+		expect(resolved.resolved.detectionQuantStep).toBe(
+			PROCESS_RANGES.detectionQuantStep.default,
+		);
+	});
+
 	it("resolved は経路既定を反映した正規化後の値を含む", () => {
 		const resolved = resolveSettings({});
 		expect(resolved.resolved.convertColorCount).toBe(

@@ -6,7 +6,6 @@ import {
 	QUICK_REDUCTION_MODE_VALUES,
 	QUICK_SETTINGS_DEFAULTS,
 } from "../../../../src/browser/quick-settings";
-import { createDefaultProcessOptions } from "../../../../src/core/processor-options";
 import { PROCESS_RANGES, RETRO_PALETTES } from "../../../../src/shared/config";
 import {
 	AUTO_BEHAVIOR_SETTING_VALUES,
@@ -25,7 +24,72 @@ import {
 } from "../../../../src/shared/option-values";
 import { ADVANCED_OPTION_SPECS } from "./option-catalog";
 import { listOptions } from "./option-listing";
-import { INTERNAL_OPTION_KEYS } from "./types";
+import { type AdvancedOptionKey, INTERNAL_OPTION_KEYS } from "./types";
+
+/**
+ * 公開すべき ProcessOptions のキー全集合。
+ * [Intended] `satisfies Record<AdvancedOptionKey, true>` により、ProcessOptions に
+ * キーが増減するとこのリテラルが型エラーになる。カタログとこの表を双方向で突き合わせる
+ * ことで、「型の上では公開対象なのにカタログに無い」キーを実行時にも検出できる。
+ */
+const ALL_ADVANCED_KEYS = {
+	processingMode: true,
+	detailLevel: true,
+	cellScale: true,
+	convertPixelsW: true,
+	convertPixelsH: true,
+	detectionQuantStep: true,
+	autoMaxCellsW: true,
+	autoMaxCellsH: true,
+	backgroundMask: true,
+	backgroundMaskTolerance: true,
+	enableGridDetection: true,
+	forcePixelsW: true,
+	forcePixelsH: true,
+	hintPixelsW: true,
+	hintPixelsH: true,
+	autoGridFromTrimmed: true,
+	fastAutoGridFromTrimmed: true,
+	phaseAwareGridSearch: true,
+	boundaryContrastOverride: true,
+	smallAspectGridAlignment: true,
+	watermarkSamplingCompat: true,
+	sampleWindow: true,
+	cellSamplingMode: true,
+	maxSamplesPerCell: true,
+	cellAlphaThreshold: true,
+	preserveThinFeatures: true,
+	preRemoveBackground: true,
+	postRemoveBackground: true,
+	bgExtractionMethod: true,
+	bgRgb: true,
+	bgRemovalScope: true,
+	bgConnectivity: true,
+	backgroundTolerance: true,
+	backgroundDehalo: true,
+	backgroundEdgeCleanup: true,
+	backgroundRampFollow: true,
+	backgroundRemovalRollback: true,
+	alphaBorderBackgroundGuard: true,
+	backgroundConfidenceGate: true,
+	smallComponentBackgroundGate: true,
+	smallComponentMode: true,
+	geminiWatermarkRemoval: true,
+	floatingMaxPixels: true,
+	trimToContent: true,
+	preserveProcessingScale: true,
+	trimAlphaThreshold: true,
+	makeSquare: true,
+	keepAspectRatio: true,
+	reduceColors: true,
+	reduceColorMode: true,
+	colorCount: true,
+	fixedPalette: true,
+	ditherMode: true,
+	ditherStrength: true,
+	outlineStyle: true,
+	outlineColor: true,
+} satisfies Record<AdvancedOptionKey, true>;
 
 /** PROCESS_RANGES のうち整数範囲を持つキー（outlineColor だけ RGB なので除く）。 */
 type IntRangeKey = Exclude<keyof typeof PROCESS_RANGES, "outlineColor">;
@@ -78,13 +142,11 @@ describe("ADVANCED_OPTION_SPECS", () => {
 		}
 	});
 
-	it("既定オプションの公開キーをすべて網羅する", () => {
-		const keys = new Set<string>(ADVANCED_OPTION_SPECS.map((spec) => spec.key));
-		const internal = new Set<string>(INTERNAL_OPTION_KEYS);
-		for (const key of Object.keys(createDefaultProcessOptions())) {
-			if (internal.has(key)) continue;
-			expect(keys.has(key), `${key} がカタログに無い`).toBe(true);
-		}
+	it("公開対象のキー集合と過不足なく一致する", () => {
+		const catalogKeys = new Set<string>(
+			ADVANCED_OPTION_SPECS.map((spec) => spec.key),
+		);
+		expect(catalogKeys).toEqual(new Set(Object.keys(ALL_ADVANCED_KEYS)));
 	});
 
 	it("列挙型の値は shared の配列と一致する", () => {
@@ -122,11 +184,14 @@ describe("ADVANCED_OPTION_SPECS", () => {
 				spec.description.length,
 				`${spec.key} の説明文が空`,
 			).toBeGreaterThan(10);
-			if (spec.kind !== "enum" || spec.valueDescriptions === undefined)
-				continue;
+			if (spec.kind !== "enum") continue;
+			expect(
+				spec.valueDescriptions,
+				`${spec.key} に選択肢の説明が無い`,
+			).toBeDefined();
 			for (const value of spec.values ?? []) {
 				expect(
-					spec.valueDescriptions[value],
+					spec.valueDescriptions?.[value],
 					`${spec.key}.${value} の説明文が無い`,
 				).toBeTruthy();
 			}

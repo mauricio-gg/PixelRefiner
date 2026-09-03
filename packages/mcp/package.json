@@ -11,9 +11,10 @@
     "pixel-refiner-mcp": "bin/pixel-refiner-mcp.mjs",
     "pixel-refiner": "bin/pixel-refiner.mjs"
   },
+  "types": "./dist/types/packages/mcp/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/types/packages/mcp/src/index.d.ts",
       "default": "./dist/index.js"
     }
   },
@@ -22,7 +23,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && tsc -p tsconfig.dts.json",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "prepack": "pnpm run build"

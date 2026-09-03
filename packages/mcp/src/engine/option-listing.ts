@@ -37,7 +37,7 @@ export type PaletteInfo = {
 	colors: readonly string[];
 };
 
-type QuickKnobInfo = {
+export type QuickKnobInfo = {
 	key: string;
 	values?: readonly string[];
 	default?: string;

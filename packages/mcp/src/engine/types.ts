@@ -17,12 +17,8 @@ export const INTERNAL_OPTION_KEYS: readonly string[] = [
 	"gridSignals",
 ];
 
-/**
- * INTERNAL_OPTION_KEYS の型側の対応物。配列とこの型は同じ集合を指す。
- * [Policy] まだ src/index.ts から re-export できない（そこの [Workaround] を参照）ため、
- * パッケージ内でしか使わない型は export しない。knip が未使用の公開型として弾く。
- */
-type InternalOptionKey =
+/** INTERNAL_OPTION_KEYS の型側の対応物。配列とこの型は同じ集合を指す。 */
+export type InternalOptionKey =
 	| "debug"
 	| "debugHook"
 	| "onDetectedGrid"
@@ -45,7 +41,7 @@ type ColorLikeOptionKey = "fixedPalette" | "outlineColor" | "bgRgb";
  * かんたん設定やプリセットが入れたキーを取り除くための唯一の手段になる（undefined は
  * JSON では表現できず、キーの有無と区別が付かないため使わない）。
  */
-type AdvancedOverrides = {
+export type AdvancedOverrides = {
 	[K in Exclude<AdvancedOptionKey, ColorLikeOptionKey>]?:
 		| ProcessOptions[K]
 		| null;
@@ -56,16 +52,20 @@ type AdvancedOverrides = {
 };
 
 /**
- * 解決後の実効設定。
- * [Intended] 公開キーのうち値が確定しているものだけを持ち、関数と undefined を含まない。
- * そのまま advanced として渡し直すと同じ実効設定に戻る（べき等）ことが契約。
+ * 解決後の実効設定。関数と undefined は含まない。
+ * [Intended] そのまま advanced として渡し直すと同じ実効設定に戻る（べき等）ことが契約。
+ * そのため「値が確定しているキー」だけでは足りない。advanced の null で消したキーは、
+ * 渡し直したときの土台（既定プリセット auto のかんたん設定）が入れ直してしまうので、
+ * 消えている状態も null として明示する。土台が元から入れないキー（reductionMode:auto の
+ * 色 3 キー、force/hint/convert の寸法、fixedPalette、bgRgb）は欠けていても土台に
+ * 現れないため、null を置かずキーごと省く。
  */
 export type EffectiveOptions = {
-	[K in AdvancedOptionKey]?: ProcessOptions[K];
+	[K in AdvancedOptionKey]?: ProcessOptions[K] | null;
 };
 
 /** グリッド検出の指定方法。詳細設定の select が公開する 4 択と同じ語彙。 */
-type GridDetectionMode = "auto" | "hint" | "force" | "off";
+export type GridDetectionMode = "auto" | "hint" | "force" | "off";
 
 export type GridDetectionSpec = {
 	mode: GridDetectionMode;
@@ -74,7 +74,7 @@ export type GridDetectionSpec = {
 };
 
 /** 組み込みプリセットの id。実行時に BUILT_IN_PRESETS と突き合わせる。 */
-type PresetId = string;
+export type PresetId = string;
 
 export type RefineSettings = {
 	preset?: PresetId;

@@ -23,7 +23,7 @@ import {
 } from "./option-descriptions";
 import type { AdvancedOptionKey } from "./types";
 
-type AdvancedOptionKind =
+export type AdvancedOptionKind =
 	| "int"
 	| "boolean"
 	| "enum"

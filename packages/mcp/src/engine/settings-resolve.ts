@@ -3,6 +3,7 @@ import {
 	createQuickProcessOptions,
 } from "../../../../src/browser/quick-settings";
 import {
+	type NormalizedProcessOptions,
 	normalizeProcessOptions,
 	type ProcessOptions,
 } from "../../../../src/core/processor-options";
@@ -70,6 +71,22 @@ const toJsonSafe = (value: unknown): unknown => {
 		return output;
 	}
 	return value;
+};
+
+/**
+ * 正規化済みオプションを JSON-safe な 1 段の辞書にする。
+ * [Intended] normalizeProcessOptions の detect は raw をまるごと展開した控えなので、
+ * そのまま載せると同じ値が 2 か所に出る。detect の中身を上へ畳み、衝突したときは
+ * 正規化済みの上位の値を優先する。
+ */
+const flattenNormalized = (
+	normalized: NormalizedProcessOptions,
+): OptionRecord => {
+	const { detect, ...rest } = normalized;
+	return {
+		...(toJsonSafe(detect) as OptionRecord),
+		...(toJsonSafe(rest) as OptionRecord),
+	};
 };
 
 /**
@@ -175,11 +192,33 @@ const applyGridDetection = (
 	}
 };
 
+/**
+ * 既定プリセット（auto）のかんたん設定が実際に値を入れる公開キー。
+ * [Intended] 実効設定を advanced として渡し直すときの土台がこれになる。土台が入れるキーは
+ * 「消えている」ことを null で明示しないと復活してしまうので、その判定に使う。
+ */
+const collectDefaultBaseKeys = (): ReadonlySet<string> => {
+	const preset =
+		BUILT_IN_PRESETS.find((entry) => entry.id === DEFAULT_PRESET_ID) ??
+		BUILT_IN_PRESETS[0];
+	const base = asRecord(createQuickProcessOptions(preset.quickSettings));
+	return new Set(
+		ADVANCED_OPTION_SPECS.filter((spec) => base[spec.key] !== undefined).map(
+			(spec) => spec.key,
+		),
+	);
+};
+
+const DEFAULT_BASE_KEYS: ReadonlySet<string> = collectDefaultBaseKeys();
+
 const buildEffectiveOptions = (record: OptionRecord): EffectiveOptions => {
 	const effective: OptionRecord = {};
 	for (const spec of ADVANCED_OPTION_SPECS) {
 		const value = record[spec.key];
-		if (value === undefined) continue;
+		if (value === undefined) {
+			if (DEFAULT_BASE_KEYS.has(spec.key)) effective[spec.key] = null;
+			continue;
+		}
 		effective[spec.key] = cloneJsonValue(value);
 	}
 	return effective as EffectiveOptions;
@@ -228,7 +267,7 @@ export const resolveSettings = (
 	return {
 		options,
 		effectiveOptions: buildEffectiveOptions(record),
-		resolved: toJsonSafe(normalizeProcessOptions(options)) as OptionRecord,
+		resolved: flattenNormalized(normalizeProcessOptions(options)),
 		quick,
 		presetId,
 		adjustments,
