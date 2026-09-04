@@ -1,0 +1,61 @@
+{
+  "name": "pixel-refiner-mcp",
+  "version": "0.1.0",
+  "description": "MCP server and CLI for Pixel Refiner: clean up AI-generated pixel art from the command line or from an AI agent",
+  "type": "module",
+  "keywords": [
+    "pixel-art",
+    "mcp",
+    "model-context-protocol",
+    "image-processing",
+    "sharp",
+    "cli"
+  ],
+  "homepage": "https://pixel-refiner.app",
+  "bugs": {
+    "url": "https://github.com/mauricio-gg/PixelRefiner/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mauricio-gg/PixelRefiner.git",
+    "directory": "packages/mcp"
+  },
+  "author": "Mauricio Galdos",
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT",
+  "bin": {
+    "pixel-refiner-mcp": "bin/pixel-refiner-mcp.mjs",
+    "pixel-refiner": "bin/pixel-refiner.mjs"
+  },
+  "types": "./dist/types/packages/mcp/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/packages/mcp/src/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["bin", "dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && tsc -p tsconfig.dts.json",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "sharp": "^0.35",
+    "zod": "^4.2"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.0.0",
+    "@types/node": "24.13.3",
+    "tsdown": "^0.23",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

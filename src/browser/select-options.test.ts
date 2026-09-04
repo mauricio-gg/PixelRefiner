@@ -2,26 +2,27 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { readHtmlWithIncludes } from "../../scripts/html-includes";
-import type { CellSamplingMode } from "../core/cell-sampler";
-import type { ProcessOptions } from "../core/processor";
-import { RETRO_PALETTES } from "../shared/config";
-import type {
-	AutoBehaviorSetting,
-	BackgroundRemovalScope,
-	CellScale,
-	Connectivity,
-	DetailLevel,
-	DitherMode,
-	GeminiWatermarkRemovalMode,
-	OutlineStyle,
-	ProcessingMode,
-	SmallComponentRemovalMode,
-} from "../shared/types";
+import {
+	AUTO_BEHAVIOR_SETTING_VALUES,
+	BACKGROUND_REMOVAL_SCOPE_VALUES,
+	BG_EXTRACTION_METHOD_VALUES,
+	CELL_SAMPLING_MODE_VALUES,
+	CELL_SCALE_VALUES,
+	CONNECTIVITY_VALUES,
+	DETAIL_LEVEL_VALUES,
+	DITHER_MODE_VALUES,
+	GEMINI_WATERMARK_REMOVAL_MODE_VALUES,
+	OUTLINE_STYLE_VALUES,
+	PROCESSING_MODE_VALUES,
+	REDUCE_COLOR_MODE_VALUES,
+	SMALL_COMPONENT_REMOVAL_MODE_VALUES,
+	valuesOf,
+} from "../shared/option-values";
 import type { AdvancedConvertSizeMode } from "./advanced-processing-controls";
-import type {
-	QuickBackground,
-	QuickDithering,
-	QuickReductionMode,
+import {
+	QUICK_BACKGROUND_VALUES,
+	QUICK_DITHERING_VALUES,
+	QUICK_REDUCTION_MODE_VALUES,
 } from "./quick-settings";
 import type { GridDetectionMode } from "./settings-options";
 
@@ -30,10 +31,6 @@ const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
 // [Intended] index.html は partials/ へ分割されているので、ビルドと同じ取り込みを
 // 済ませてから走査する。どのパーシャルにある select も検査対象に残すため。
 const html = readHtmlWithIncludes(REPO_ROOT, "index.html");
-
-// 型の値集合をそのまま列挙する。値の増減が型エラーになるので取りこぼさない。
-const valuesOf = <T extends string>(values: Record<T, true>): string[] =>
-	Object.keys(values);
 
 type SelectSpec = {
 	/** option 値の突き合わせ先になる値集合 */
@@ -46,67 +43,39 @@ type SelectSpec = {
  * union 型の値集合から突き合わせ先を作る。
  * [Intended] withheld を `readonly T[]` にしているので、型から値が消えると
  * 非公開の指定だけが残ることはなく、その場で型エラーになる。
+ * shared 側に実行時配列が無い、この test ファイルにしか出てこないブラウザ専用の union
+ * （GridDetectionMode, AdvancedConvertSizeMode）にだけ使う。
  */
 const fromType = <T extends string>(
 	values: Record<T, true>,
 	withheld: readonly T[] = [],
 ): SelectSpec => ({ source: valuesOf<T>(values), withheld });
 
-/** 定数から組み立てた値集合を突き合わせ先にする。 */
-const fromValues = (source: readonly string[]): SelectSpec => ({
-	source,
-	withheld: [],
-});
-
-const PROCESSING_MODES = fromType<ProcessingMode>({
-	auto: true,
-	refine: true,
-	convert: true,
-	preserve: true,
-});
-
-const DETAIL_LEVELS = fromType<DetailLevel>({
-	smallest: true,
-	small: true,
-	coarse: true,
-	balanced: true,
-	detailed: true,
-});
-
-const CELL_SCALES = fromType<CellScale>({
-	quarter: true,
-	half: true,
-	same: true,
-	double: true,
-	quadruple: true,
-});
-
 /**
- * [Intended] fromType は SelectSpec を返して型引数を落とすため、同じ型に別の
- * withheld を付けるには値集合の側を使い回す必要がある。列挙を 1 か所に保つ。
+ * shared/option-values.ts や quick-settings.ts の実行時配列を突き合わせ先にする。
+ * [Intended] これらの配列は元が `Record<T, true>`（valuesOf 経由）で作られているため、
+ * union の値が増減すれば定義元で型エラーになる。ここではその配列をそのまま使い回すだけで、
+ * ローカルに値を再列挙しない。
  */
-const DITHER_MODE_VALUES: Record<DitherMode, true> = {
-	none: true,
-	"floyd-steinberg": true,
-	"bayer-2x2": true,
-	"bayer-4x4": true,
-	"bayer-8x8": true,
-	ordered: true,
-};
+const fromValues = (
+	source: readonly string[],
+	withheld: readonly string[] = [],
+): SelectSpec => ({ source, withheld });
 
-const DITHER_MODES = fromType<DitherMode>(DITHER_MODE_VALUES);
+const PROCESSING_MODES = fromValues(PROCESSING_MODE_VALUES);
+
+const DETAIL_LEVELS = fromValues(DETAIL_LEVEL_VALUES);
+
+const CELL_SCALES = fromValues(CELL_SCALE_VALUES);
+
+const DITHER_MODES = fromValues(DITHER_MODE_VALUES);
 
 /**
  * 色削減モードの選択肢。レトロパレットの一覧に、パレットを使わない 3 択を足したもの。
- * [Intended] ProcessOptions["reduceColorMode"] は string なので型では縛れない。
- * パレットの追加を取りこぼさないよう、定義元の RETRO_PALETTES から組み立てる。
+ * [Intended] REDUCE_COLOR_MODE_VALUES は shared/config.ts の RETRO_PALETTES から
+ * 組み立てているので、パレットの追加を取りこぼさない。
  */
-const REDUCE_COLOR_MODES = fromValues([
-	"none",
-	"auto",
-	"fixed",
-	...Object.keys(RETRO_PALETTES),
-]);
+const REDUCE_COLOR_MODES = fromValues(REDUCE_COLOR_MODE_VALUES);
 
 /**
  * 検証対象の select と、option 値の突き合わせ先。
@@ -114,7 +83,7 @@ const REDUCE_COLOR_MODES = fromValues([
  */
 const SELECT_SPECS: Record<string, SelectSpec> = {
 	// バッチ設定は共通パレット向けの簡易 UI なので、ベイヤーの各サイズは出さない
-	"batch-dither-mode": fromType<DitherMode>(DITHER_MODE_VALUES, [
+	"batch-dither-mode": fromValues(DITHER_MODE_VALUES, [
 		"bayer-2x2",
 		"bayer-4x4",
 		"bayer-8x8",
@@ -122,36 +91,9 @@ const SELECT_SPECS: Record<string, SelectSpec> = {
 	"quick-processing-mode": PROCESSING_MODES,
 	"quick-detail-level": DETAIL_LEVELS,
 	"quick-cell-scale": CELL_SCALES,
-	"quick-reduction-mode": fromType<QuickReductionMode>({
-		auto: true,
-		none: true,
-		"8": true,
-		"16": true,
-		"24": true,
-		"32": true,
-		mono: true,
-		gb_legacy: true,
-		gb_pocket: true,
-		gb_light: true,
-		pico8: true,
-		nes: true,
-		pc98: true,
-		msx: true,
-		c64: true,
-		arne16: true,
-		sfc_sprite: true,
-		sfc_bg: true,
-	}),
-	"quick-background": fromType<QuickBackground>({
-		keep: true,
-		auto: true,
-		pick: true,
-	}),
-	"quick-dithering": fromType<QuickDithering>({
-		off: true,
-		subtle: true,
-		strong: true,
-	}),
+	"quick-reduction-mode": fromValues(QUICK_REDUCTION_MODE_VALUES),
+	"quick-background": fromValues(QUICK_BACKGROUND_VALUES),
+	"quick-dithering": fromValues(QUICK_DITHERING_VALUES),
 	"advanced-processing-mode": PROCESSING_MODES,
 	"advanced-convert-size-mode": fromType<AdvancedConvertSizeMode>({
 		smallest: true,
@@ -165,11 +107,7 @@ const SELECT_SPECS: Record<string, SelectSpec> = {
 	}),
 	"reduce-color-mode": REDUCE_COLOR_MODES,
 	"dither-mode": DITHER_MODES,
-	"outline-style": fromType<OutlineStyle>({
-		none: true,
-		rounded: true,
-		sharp: true,
-	}),
+	"outline-style": fromValues(OUTLINE_STYLE_VALUES),
 	"grid-detection-mode": fromType<GridDetectionMode>({
 		auto: true,
 		hint: true,
@@ -178,54 +116,27 @@ const SELECT_SPECS: Record<string, SelectSpec> = {
 	}),
 	"advanced-cell-scale": CELL_SCALES,
 	// area-weighted と edge-aware は内部専用。詳細設定は 3 択として公開している
-	"cell-sampling-mode": fromType<CellSamplingMode>(
-		{
-			"legacy-median": true,
-			"hard-alpha-medoid": true,
-			"alpha-aware-medoid": true,
-			"area-weighted": true,
-			"edge-aware": true,
-		},
-		["area-weighted", "edge-aware"],
-	),
+	"cell-sampling-mode": fromValues(CELL_SAMPLING_MODE_VALUES, [
+		"area-weighted",
+		"edge-aware",
+	]),
 	// auto は保存済み設定との互換用で on と同義。選ばせる意味が無いので出さない
-	"small-aspect-grid-alignment": fromType<AutoBehaviorSetting>(
-		{ auto: true, on: true, off: true },
-		["auto"],
-	),
-	"bg-extraction-method": fromType<
-		NonNullable<ProcessOptions["bgExtractionMethod"]>
-	>({
-		none: true,
-		auto: true,
-		"top-left": true,
-		"bottom-left": true,
-		"top-right": true,
-		"bottom-right": true,
-		rgb: true,
-	}),
+	"small-aspect-grid-alignment": fromValues(AUTO_BEHAVIOR_SETTING_VALUES, [
+		"auto",
+	]),
+	"bg-extraction-method": fromValues(BG_EXTRACTION_METHOD_VALUES),
 	// off は出さない。背景除去の有無は背景抽出方式の none が持ち、
 	// settings-options.ts はそのとき scope を "off" に読み替える
-	"advanced-bg-removal-scope": fromType<BackgroundRemovalScope>(
-		{ off: true, selected: true, outer: true, auto: true, all: true },
-		["off"],
-	),
-	"bg-connectivity": fromType<Connectivity>({ "4": true, "8": true }),
-	"gemini-watermark-removal": fromType<GeminiWatermarkRemovalMode>({
-		off: true,
-		auto: true,
-	}),
-	"small-component-mode": fromType<SmallComponentRemovalMode>({
-		off: true,
-		light: true,
-		auto: true,
-		strong: true,
-	}),
+	"advanced-bg-removal-scope": fromValues(BACKGROUND_REMOVAL_SCOPE_VALUES, [
+		"off",
+	]),
+	"bg-connectivity": fromValues(CONNECTIVITY_VALUES),
+	"gemini-watermark-removal": fromValues(GEMINI_WATERMARK_REMOVAL_MODE_VALUES),
+	"small-component-mode": fromValues(SMALL_COMPONENT_REMOVAL_MODE_VALUES),
 	// auto は保存済み設定との互換用で on と同義。選ばせる意味が無いので出さない
-	"watermark-sampling-compat": fromType<AutoBehaviorSetting>(
-		{ auto: true, on: true, off: true },
-		["auto"],
-	),
+	"watermark-sampling-compat": fromValues(AUTO_BEHAVIOR_SETTING_VALUES, [
+		"auto",
+	]),
 };
 
 type ExcludedSelect = {

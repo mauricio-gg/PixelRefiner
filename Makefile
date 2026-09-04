@@ -23,6 +23,17 @@ fix:
 
 build:
 	pnpm run build
+	pnpm --filter pixel-refiner-mcp run build
+	# [Policy] bin と exports が指す 3 つの入口が必ず生成されていることを確かめる。
+	# 欠けても publish は通ってしまい、利用者が npx した時点で初めて壊れる。
+	test -f packages/mcp/dist/index.js
+	test -f packages/mcp/dist/mcp.js
+	test -f packages/mcp/dist/cli.js
+	# [Policy] src/core/worker.ts（comlink expose()）が packages/mcp のバンドルへ
+	# 誤って同梱されていないことを保証する。混入すると worker.ts の load 時副作用が
+	# CLI/MCP サーバーのプロセスでも走ってしまう。共有コードはハッシュ付きの別チャンクへ
+	# 切り出されるので、入口だけでなく dist 配下すべてを見る。
+	! grep -rq comlink packages/mcp/dist
 
 quality:
 	pnpm run test:quality:full
@@ -36,6 +47,7 @@ test:
 
 test-unit:
 	pnpm run test:unit
+	pnpm --filter pixel-refiner-mcp test
 
 test-debug:
 	rm -rf tmp/debug
@@ -43,6 +55,7 @@ test-debug:
 
 type-check:
 	pnpm exec tsc --noEmit
+	pnpm --filter pixel-refiner-mcp run type-check
 
 check-ts-rules:
 	python3 scripts/check_ts_rules.py

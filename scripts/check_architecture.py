@@ -87,6 +87,68 @@ def check_file(path: Path, src_root: Path, repository_root: Path) -> list[str]:
     return errors
 
 
+# [Policy] packages/* から root の src へは quick-settings.ts だけを許可する。
+# core/worker.ts は Web Worker エントリーポイントで comlink expose() の副作用を持つため、
+# Node 環境で動く packages/* から読み込むと壊れる。
+ALLOWED_ROOT_BROWSER_IMPORTS = {"quick-settings"}
+
+
+def package_source_files(repository_root: Path) -> list[Path]:
+    packages_root = repository_root / "packages"
+    if not packages_root.is_dir():
+        return []
+    files: list[Path] = []
+    for package_dir in sorted(p for p in packages_root.iterdir() if p.is_dir()):
+        package_src = package_dir / "src"
+        if not package_src.is_dir():
+            continue
+        files.extend(
+            path
+            for path in sorted(package_src.rglob("*"))
+            if path.is_file() and path.suffix in {".ts", ".tsx"}
+        )
+    return files
+
+
+def check_package_file(path: Path, src_root: Path, repository_root: Path) -> list[str]:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError as error:
+        return [f"{path}: ファイルを読み込めません: {error}"]
+
+    errors: list[str] = []
+    display_path = path.relative_to(repository_root)
+    import_matches = list(IMPORT_FROM_RE.finditer(content))
+    import_matches.extend(SIDE_EFFECT_IMPORT_RE.finditer(content))
+    for match in import_matches:
+        specifier = match.group(1)
+        if not specifier.startswith("."):
+            continue
+        imported_path = (path.parent / specifier).resolve()
+        try:
+            relative = imported_path.relative_to(src_root.resolve())
+        except ValueError:
+            continue
+        parts = relative.parts
+        if not parts:
+            continue
+        if parts[0] == "core" and len(parts) > 1 and Path(parts[1]).stem == "worker":
+            errors.append(
+                f"{display_path}:{line_number(content, match.start())}: "
+                "packages/* から src/core/worker へ依存できません"
+            )
+            continue
+        if parts[0] == "browser":
+            basename = Path(parts[-1]).stem
+            if basename not in ALLOWED_ROOT_BROWSER_IMPORTS:
+                errors.append(
+                    f"{display_path}:{line_number(content, match.start())}: "
+                    f"packages/* から src/browser/{'/'.join(parts[1:])} へ依存できません"
+                    f"（許可: {sorted(ALLOWED_ROOT_BROWSER_IMPORTS)}）"
+                )
+    return errors
+
+
 def check_architecture(repository_root: Path) -> list[str]:
     src_root = repository_root / "src"
     if not src_root.is_dir():
@@ -95,6 +157,8 @@ def check_architecture(repository_root: Path) -> list[str]:
     errors: list[str] = []
     for path in source_files(src_root):
         errors.extend(check_file(path, src_root, repository_root))
+    for path in package_source_files(repository_root):
+        errors.extend(check_package_file(path, src_root, repository_root))
     return errors
 
 

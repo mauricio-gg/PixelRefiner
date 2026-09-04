@@ -34,6 +34,20 @@ def main():
     for path in src_dir.rglob("*.tsx"):
         all_errors.extend(check_file(path))
 
+    # packages/*/src も同じルールで検査する（.test.ts は src と同様に除外する）。
+    packages_dir = Path("packages")
+    if packages_dir.is_dir():
+        for package_dir in sorted(p for p in packages_dir.iterdir() if p.is_dir()):
+            package_src = package_dir / "src"
+            if not package_src.is_dir():
+                continue
+            for path in package_src.rglob("*.ts"):
+                if path.name.endswith(".test.ts"):
+                    continue
+                all_errors.extend(check_file(path))
+            for path in package_src.rglob("*.tsx"):
+                all_errors.extend(check_file(path))
+
     if all_errors:
         print("\n".join(all_errors))
         print(f"\nTotal errors found: {len(all_errors)}")

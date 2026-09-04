@@ -1,15 +1,24 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "src/browser/guide.ts",
-    "src/**/*.test.ts",
-    "test/**/*.test.ts",
-    "test/quality/quality-reporter.ts",
-    "scripts/**/*.test.ts"
-  ],
-  "project": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "*.config.ts"],
-  "ignoreDependencies": ["prettier", "repomix"],
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/browser/guide.ts",
+        "src/**/*.test.ts",
+        "test/**/*.test.ts",
+        "test/quality/quality-reporter.ts",
+        "scripts/**/*.test.ts"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts", "*.config.ts"],
+      "ignoreDependencies": ["prettier", "repomix"]
+    },
+    "packages/mcp": {
+      "entry": ["src/index.ts", "src/mcp.ts", "src/cli.ts", "src/**/*.test.ts", "tsdown.config.ts", "vitest.config.ts"],
+      "project": ["src/**/*.ts", "*.config.ts"]
+    }
+  },
   "ignoreIssues": {
-    "test/quality/**": ["exports", "types"]
+    "test/quality/**": ["exports", "types"],
+    "src/shared/option-values.ts": ["exports"]
   }
 }
