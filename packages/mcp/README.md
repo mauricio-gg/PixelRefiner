@@ -7,7 +7,60 @@ publishes it to AI agents twice over: as a stdio **MCP server** (`pixel-refiner-
 (`pixel-refiner`) that prints JSON. Both are thin transports over one Node engine, so a tool call and a shell
 command with the same settings produce the same PNG. Source: <https://github.com/mauricio-gg/PixelRefiner>.
 
+## Run from a checkout (unpublished)
+
+This package is not on npm yet. From a clone, build once and point each host at the bin files by absolute
+path.
+
+```bash
+pnpm install
+pnpm --filter pixel-refiner-mcp run build
+```
+
+`dist/` is git-ignored, so rebuild after pulling changes that touch `packages/mcp` or `src/core`/`src/shared`.
+
+Register the server by absolute path, replacing `<repo>` with the absolute path to your clone.
+
+**Claude Code**
+
+```bash
+claude mcp add --transport stdio --scope project pixel-refiner -- node <repo>/packages/mcp/bin/pixel-refiner-mcp.mjs
+```
+
+or, as `.mcp.json` in the project root:
+
+```json
+{ "mcpServers": { "pixel-refiner": { "type": "stdio", "command": "node", "args": ["<repo>/packages/mcp/bin/pixel-refiner-mcp.mjs"] } } }
+```
+
+**Cursor** — `.cursor/mcp.json` takes the same `command` and `args`, without `type`:
+
+```json
+{ "mcpServers": { "pixel-refiner": { "command": "node", "args": ["<repo>/packages/mcp/bin/pixel-refiner-mcp.mjs"] } } }
+```
+
+**Codex**
+
+```bash
+codex mcp add pixel-refiner --env PIXEL_REFINER_MCP_COMPAT=minimal -- node <repo>/packages/mcp/bin/pixel-refiner-mcp.mjs
+```
+
+The CLI runs the same way, straight from the checkout:
+
+```bash
+node <repo>/packages/mcp/bin/pixel-refiner.mjs options
+node <repo>/packages/mcp/bin/pixel-refiner.mjs refine sprite.png --output sprite.px.png
+```
+
+A shell alias saves typing the path on every call: `alias pixel-refiner='node <repo>/packages/mcp/bin/pixel-refiner.mjs'`.
+(`pnpm exec pixel-refiner ...` run from inside `packages/mcp` does not resolve the package's own bin, so it is
+not an alternative here.)
+
+The sections below describe the npm path, once published.
+
 ## Install
+
+Once published to npm. Until then, see [Run from a checkout](#run-from-a-checkout-unpublished).
 
 ```bash
 npx -y pixel-refiner-mcp                                   # run the MCP server (stdio)
@@ -18,6 +71,8 @@ npm install -g pixel-refiner-mcp                            # then: pixel-refine
 Node 24 or newer. The image codec is [sharp](https://sharp.pixelplumbing.com/), which ships prebuilt binaries.
 
 ## Register the MCP server
+
+Once published to npm. Until then, see [Run from a checkout](#run-from-a-checkout-unpublished).
 
 **Claude Code**
 
@@ -65,7 +120,7 @@ lost — the text block always carries the whole JSON result.
 | --- | --- |
 | `analyze_image` | Reports route, detected grid, rival grid candidates and warnings. Writes nothing; call it first. |
 | `refine_image` | Refines one image, writes the PNG, returns the report and a preview image block. |
-| `refine_batch` | Refines up to 64 images, optionally quantising all of them against one shared palette. The shared palette overrides each item's colour-reduction settings and `fixedPalette`, and outlines are not drawn on the pass that determines the palette. |
+| `refine_batch` | Refines up to 64 images, optionally against a shared palette (overrides colour settings and `fixedPalette`; no outlines while picking it). |
 | `list_options` | The whole settings vocabulary: preset ids, retro palettes, quick knobs, advanced options. |
 
 Settings layer as **preset → quick → advanced**, and later layers win. A preset is a named quick-settings
@@ -104,7 +159,7 @@ re-reading the output.
 | `--no-preview` / `--preview` | refine / batch | Previews are on for `refine`, off for `batch` (and only honoured for 4 inputs or fewer). |
 | `--detail summary\|full` | refine, analyze, batch | `full` adds `effectiveOptions` and per-candidate subscores. |
 | `--output-dir <dir>`, `--suffix <s>` | batch | Where results go and the default-name suffix (default `.refined`). |
-| `--shared-palette` | batch | One palette for every image; tune it with `--palette-colors`, `--palette-dither`, `--palette-dither-strength`. It overrides each image's colour-reduction settings and `fixedPalette`, and outlines are not drawn on the pass that determines the palette. |
+| `--shared-palette` | batch | Shared batch palette; tune with `--palette-colors`, `--palette-dither`, `--palette-dither-strength` (see `refine_batch`). |
 | `--section <name>` | options | `all`, `presets`, `palettes`, `quick` or `advanced` (default `all`). |
 | `--compat <mode>` | serve | `full` or `minimal` (see Codex above). |
 | `--compact`, `--verbose` | all | One-line JSON; info-level logging to stderr. |
