@@ -179,22 +179,16 @@ export const processForcedRoute = (
 			? image
 			: cropRawImage(image, bounds.x, bounds.y, bounds.w, bounds.h);
 	const createLogicalPass = (bounds: NonNullable<typeof b>) => {
-		let cropped = cropToBounds(working, bounds);
-		// [Intended] cohesion は working（事前背景除去済みの原寸）に対して、downsample の
-		// 直前で走る（spec M4, locked decision 2・18）。ここで target ちょうどのサイズへ
-		// 描き直すことで、下の cellW/H は 1 になり、downsample は素通しになる。
-		if (o.cohesion) {
-			cropped = applyCohesionStage(
-				cropped,
-				{ width: outW, height: outH },
-				o.cohesionFamilies,
-				o.cohesionTones,
-				o.cohesionRenderer as CohesionRenderer,
-			);
-		}
+		const cropped = cropToBounds(working, bounds);
 		// [Policy] セル寸法は軸ごとに独立して求める。横と縦でドット幅が微妙に異なる入力を
 		// 救うための最終手段であり、縦横比を保つ等方分割へ「修正」してはいけない。
 		// 縦横比を保った縮小が要る場合は、かんたん設定の「ドットの大きさ」(cellScale) を使う。
+		// [Intended] cellW/cellH とこの g は常に「元のソース切り抜き ÷ 出力サイズ」から
+		// 求める -- cohesion が有効かどうかに関わらず同じ値。この g は down2 の生成以外にも
+		// 縁の汚染除去・生存成分の再クロップ・呼び出し元へ返す grid など、ソースピクセル単位で
+		// 考えるすべての計算に使われるため、cohesion の出力サイズ（target=outW x outH）を
+		// ここへ漏らすと、それらの計算がソースの実寸ではなく 1:1 のグリッドを見ることになる
+		// （code-guardian 指摘の "far-away speck survives" バグ）。
 		const cellW = cropped.width / outW;
 		const cellH = cropped.height / outH;
 		const g: PixelGrid = {
@@ -211,7 +205,37 @@ export const processForcedRoute = (
 			score: 0,
 		};
 		const sw = cellW < 1 || cellH < 1 ? 1 : o.sampleWindow;
-		const down2 = downsample(cropped, g, getDownsampleOptions(o, sw));
+		// [Intended] cohesion は working の切り抜きに対して、downsample の直前で走る
+		// （spec M4, locked decision 2・18）。すでに target ちょうどのサイズへ描き直された
+		// 画像なので、down2 だけはそれ専用の等倍（cellW=cellH=1）グリッドで、
+		// サンプルウィンドウも強制的に 1 にしてサンプリングする -- セルサンプラー自身の
+		// 色の平滑化が、cohesion がすでに描き切った出力ピクセル同士を混ぜてしまわないため。
+		// g 自身は上のソース基準のまま変えない。
+		const down2 = o.cohesion
+			? downsample(
+					applyCohesionStage(
+						cropped,
+						{ width: outW, height: outH },
+						o.cohesionFamilies,
+						o.cohesionTones,
+						o.cohesionRenderer as CohesionRenderer,
+					),
+					{
+						cellW: 1,
+						cellH: 1,
+						offsetX: 0,
+						offsetY: 0,
+						outW,
+						outH,
+						cropX: 0,
+						cropY: 0,
+						cropW: outW,
+						cropH: outH,
+						score: 0,
+					},
+					getDownsampleOptions(o, 1),
+				)
+			: downsample(cropped, g, getDownsampleOptions(o, sw));
 		const croppedOriginal = cropToBounds(img, bounds);
 		const compareBeforeSanitized = downsample(
 			croppedOriginal,

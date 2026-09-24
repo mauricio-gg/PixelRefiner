@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { RawImage } from "../shared/types";
+import type { CohesionRenderer } from "./cohesion";
 import { processImage } from "./processor";
 import {
 	cleanDebugDir,
@@ -712,6 +713,81 @@ describe("processImage", () => {
 			expect(noisy.result.data).toEqual(clean.result.data);
 			expect(noisy.grid.cellW).toBe(clean.grid.cellW);
 			expect(noisy.grid.cellH).toBe(clean.grid.cellH);
+		});
+
+		it("keeps the source-pixel grid exactly as it is with cohesion off, for a real (non-integer) crop", () => {
+			// [Policy] code-guardian round 2, blocker B1: cohesion draws straight onto the
+			// outW x outH grid, but that size must never leak into `g` -- the source-pixel
+			// grid small-component removal's own evidence image, the surviving-bounds
+			// re-crop, `forcedTrimmedGridForOriginal`, and the grid this function returns
+			// all rely on `g` meaning "source crop ÷ output size", the same with cohesion
+			// on or off. Reproduces the reviewer's own repro: a big sprite plus a small
+			// far-away speck, forced to a size that does not divide the crop evenly
+			// (cellW 6.4, not an integer) -- before this fix, cohesion made `g.cellW`
+			// collapse to exactly 1 (`cropped.width === outW` once cohesion had already
+			// resized `cropped` to the target) instead of the real 6.4. A fake
+			// nearest-neighbour renderer is enough here: this test is about the
+			// grid/evidence wiring around cohesion, not the real trace.
+			const size = 80;
+			const data = new Uint8ClampedArray(size * size * 4);
+			for (let y = 0; y < size; y += 1) {
+				for (let x = 0; x < size; x += 1) {
+					const i = (y * size + x) * 4;
+					const inSprite = x >= 10 && x < 50 && y >= 10 && y < 50;
+					const inSpeck = x >= 70 && x < 74 && y >= 70 && y < 74;
+					const [r, g, b] = inSprite
+						? [20, 20, 20]
+						: inSpeck
+							? [20, 200, 20]
+							: [255, 255, 255];
+					data[i] = r;
+					data[i + 1] = g;
+					data[i + 2] = b;
+					data[i + 3] = 255;
+				}
+			}
+			const image: RawImage = { width: size, height: size, data };
+			const fakeNearestRenderer: CohesionRenderer = (
+				rgba,
+				sourceWidth,
+				sourceHeight,
+				target,
+			) => {
+				const out = new Uint8ClampedArray(target.width * target.height * 4);
+				for (let y = 0; y < target.height; y++) {
+					for (let x = 0; x < target.width; x++) {
+						const sx = Math.floor((x / target.width) * sourceWidth);
+						const sy = Math.floor((y / target.height) * sourceHeight);
+						const srcI = (sy * sourceWidth + sx) * 4;
+						const dstI = (y * target.width + x) * 4;
+						out[dstI] = rgba[srcI];
+						out[dstI + 1] = rgba[srcI + 1];
+						out[dstI + 2] = rgba[srcI + 2];
+						out[dstI + 3] = rgba[srcI + 3];
+					}
+				}
+				return { width: target.width, height: target.height, data: out };
+			};
+			const options = {
+				forcePixelsW: 10,
+				forcePixelsH: 10,
+				preRemoveBackground: false,
+				postRemoveBackground: true,
+				bgExtractionMethod: "top-left" as const,
+				bgRemovalScope: "outer" as const,
+				backgroundTolerance: 16,
+				trimToContent: true,
+				cellSamplingMode: "alpha-aware-medoid" as const,
+			};
+			const off = processImage(image, options);
+			const on = processImage(image, {
+				...options,
+				cohesion: true,
+				cohesionRenderer: fakeNearestRenderer,
+			});
+
+			expect(off.grid.cellW).toBeCloseTo(6.4, 5);
+			expect(on.grid).toEqual(off.grid);
 		});
 
 		it("reports a skipped removal for an uncertain automatic background", () => {
