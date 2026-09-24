@@ -89,18 +89,11 @@ const ALL_ADVANCED_KEYS = {
 	ditherStrength: true,
 	outlineStyle: true,
 	outlineColor: true,
-	// [Workaround] cohesion/cohesionFamilies/cohesionTones/cleanup はまだ
-	// ADVANCED_OPTION_SPECS へ登録していない（別チケットのタスク、M4.1 plan Task 4）。
-	// この Record は AdvancedOptionKey の全キーを要求するため、登録するまでの間だけ
-	// その 4 キーを除外しておく -- 登録が終わったら Exclude ごと外し、4 行を
-	// 上のリテラルへ普通に追加する。
-} satisfies Record<
-	Exclude<
-		AdvancedOptionKey,
-		"cohesion" | "cohesionFamilies" | "cohesionTones" | "cleanup"
-	>,
-	true
->;
+	cohesion: true,
+	cohesionFamilies: true,
+	cohesionTones: true,
+	cleanup: true,
+} satisfies Record<AdvancedOptionKey, true>;
 
 /** PROCESS_RANGES のうち整数範囲を持つキー（outlineColor だけ RGB なので除く）。 */
 type IntRangeKey = Exclude<keyof typeof PROCESS_RANGES, "outlineColor">;
@@ -125,6 +118,8 @@ const INT_RANGE_KEYS: Readonly<Record<string, IntRangeKey>> = {
 	ditherStrength: "ditherStrength",
 	autoMaxCellsW: "autoMaxCells",
 	autoMaxCellsH: "autoMaxCells",
+	cohesionFamilies: "cohesionFamilies",
+	cohesionTones: "cohesionTones",
 };
 
 const ENUM_VALUE_SOURCES: Readonly<Record<string, readonly string[]>> = {

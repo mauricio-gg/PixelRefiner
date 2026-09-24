@@ -7,7 +7,10 @@ import {
 	normalizeProcessOptions,
 	type ProcessOptions,
 } from "../../../../src/core/processor-options";
-import { ADVANCED_OPTION_SPECS } from "./option-catalog";
+import {
+	ADVANCED_OPTION_SPEC_BY_KEY,
+	ADVANCED_OPTION_SPECS,
+} from "./option-catalog";
 import {
 	assertAdvancedOptionKey,
 	resolveQuickState,
@@ -23,6 +26,25 @@ import {
 } from "./types";
 
 const DEFAULT_PRESET_ID = "auto";
+
+/**
+ * この 4 キーだけは、呼び出し元が --advanced で一切触れなかったときに
+ * ADVANCED_OPTION_SPECS 自身の default(true) をバックフィルする(spec M4,
+ * ロック済み決定 7)。PROCESS_DEFAULTS はこの 2 つを false のままにしている
+ * (ライブラリ呼び出しやブラウザの Web Worker は CohesionRenderer を渡さず、
+ * cohesion が on だと投げてしまうため)ので、CLI/MCP だけで on にする層を
+ * ここに用意する。[Policy] 「advanced のキーは全部レジストリの default から
+ * 埋める」という一般化はしない -- forcePixelsW をはじめ、多くの既存キーは
+ * 「未設定」であることそのものに意味があるので、そちらまでバックフィルすると
+ * 壊れる。この配列を増やすのは、cohesion/cleanup と同じ理由(core とはわざと
+ * 違う既定値を持つ)を持つキーが増えたときだけにする。
+ */
+const CLI_DEFAULT_ON_KEYS: readonly string[] = [
+	"cohesion",
+	"cohesionFamilies",
+	"cohesionTones",
+	"cleanup",
+];
 
 /** gridDetection が面倒を見る 5 つのキー。詳細設定との同時指定は矛盾になる。 */
 const GRID_OPTION_KEYS: readonly string[] = [
@@ -249,6 +271,14 @@ export const resolveSettings = (
 
 	const advanced = (settings.advanced ?? {}) as Readonly<OptionRecord>;
 	const mentioned = applyAdvanced(record, advanced, adjustments);
+	// [Intended] mentioned に無い(=呼び出し元が触れなかった)キーだけを埋める。
+	// record[key] !== undefined の判定は、将来かんたん設定の土台が直接この
+	// 4 キーへ値を入れるようになった場合の空振り確認で、今のところ常に通る。
+	for (const key of CLI_DEFAULT_ON_KEYS) {
+		if (mentioned.has(key) || record[key] !== undefined) continue;
+		const spec = ADVANCED_OPTION_SPEC_BY_KEY.get(key);
+		if (spec?.default !== undefined) record[key] = spec.default;
+	}
 	applyDerivedRules(record, advanced, mentioned);
 	if (settings.gridDetection !== undefined) {
 		applyGridDetection(record, settings.gridDetection, mentioned, adjustments);

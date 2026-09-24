@@ -20,6 +20,15 @@ const EXCLUDED_DEFAULT_KEYS = new Set<string>([
 	"includeDiagnosticSummary",
 	// 非推奨の旧オプション。normalizeProcessOptions が既定 0 を与える。
 	"floatingMaxPixels",
+	// [Policy] cohesion/cleanup は resolveSettings のバックフィル (spec M4,
+	// ロック済み決定 7) が「呼び出し元が一切触れていない」ことを record[key] === undefined
+	// で判定する。ここで既定値を埋めると createQuickProcessOptions が必ず false を
+	// 詰めてしまい、CLI/MCP の on 既定が二度と効かなくなる。normalizeProcessOptions
+	// 自身の `raw.cohesion ?? PROCESS_DEFAULTS.cohesion` が core 側の既定を保証する。
+	"cohesion",
+	"cohesionFamilies",
+	"cohesionTones",
+	"cleanup",
 ]);
 
 describe("default process options", () => {

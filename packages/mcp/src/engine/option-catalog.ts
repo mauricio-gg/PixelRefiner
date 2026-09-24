@@ -202,6 +202,18 @@ export const ADVANCED_OPTION_SPECS: readonly AdvancedOptionSpec[] = [
 	),
 	intSpec("colorCount", PROCESS_RANGES.colorCount),
 	plainSpec("fixedPalette", "palette"),
+	// [Policy] ここで渡している true/false は PROCESS_DEFAULTS.cohesion/cleanup
+	// (false, core 側のライブラリ/ブラウザ呼び出し用) とはわざと違う値。この
+	// AdvancedOptionSpec 自身の default は settings-resolve.ts のバックフィルが
+	// 「呼び出し元が触れなかったキー」を埋めるために読む値で、spec M4 のロック済み
+	// 決定 7 によりこちらは true にする。
+	// トレースパラメータ(filterSpeckle・colorPrecision・mode・hierarchical)は
+	// ここに追加しない。常に固定値で cohesion-renderer.ts の中だけに置き、
+	// --advanced からも AI からも絶対に触れない。
+	boolSpec("cohesion", true),
+	intSpec("cohesionFamilies", PROCESS_RANGES.cohesionFamilies),
+	intSpec("cohesionTones", PROCESS_RANGES.cohesionTones),
+	boolSpec("cleanup", true),
 	enumSpec("ditherMode", DITHER_MODE_VALUES, PROCESS_DEFAULTS.ditherMode),
 	intSpec("ditherStrength", PROCESS_RANGES.ditherStrength),
 	enumSpec("outlineStyle", OUTLINE_STYLE_VALUES, PROCESS_DEFAULTS.outlineStyle),

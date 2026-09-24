@@ -296,6 +296,50 @@ exports[`refineImageInputSchema > 生成される JSON Schema が変わってい
                 },
               ],
             },
+            "cleanup": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "cohesion": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "cohesionFamilies": {
+              "anyOf": [
+                {
+                  "maximum": 256,
+                  "minimum": 2,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "cohesionTones": {
+              "anyOf": [
+                {
+                  "maximum": 8,
+                  "minimum": 1,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
             "colorCount": {
               "anyOf": [
                 {

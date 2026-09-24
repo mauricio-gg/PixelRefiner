@@ -115,6 +115,30 @@ describe("createEngine refine", () => {
 			}),
 		).rejects.toBeInstanceOf(SettingsError);
 	});
+
+	it("cohesion と cleanup は呼び出し元が触れなければ on になり、明示的に off にすると出力が変わる (spec M4, ロック済み決定 7)", async () => {
+		const entry = qualityCase("remove-background-trim-auto-grid");
+		const engine = createEngine();
+		const defaulted = await engine.refine(inputBytes(entry), {
+			settings: { advanced: { forcePixelsW: 32, forcePixelsH: 32 } },
+		});
+		expect(defaulted.report.effectiveOptions?.cohesion).toBe(true);
+		expect(defaulted.report.effectiveOptions?.cleanup).toBe(true);
+
+		const explicitlyOff = await engine.refine(inputBytes(entry), {
+			settings: {
+				advanced: {
+					forcePixelsW: 32,
+					forcePixelsH: 32,
+					cohesion: false,
+					cleanup: false,
+				},
+			},
+		});
+		expect(Buffer.from(defaulted.image.data)).not.toEqual(
+			Buffer.from(explicitlyOff.image.data),
+		);
+	});
 });
 
 describe("createEngine analyze", () => {

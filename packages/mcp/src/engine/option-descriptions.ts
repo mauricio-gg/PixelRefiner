@@ -140,18 +140,18 @@ export const OPTION_DESCRIPTIONS: Readonly<Record<AdvancedOptionKey, string>> =
 			"Add an outline around the opaque content at the output resolution.",
 		outlineColor:
 			"Outline colour as '#rrggbb' or {r,g,b}. Only used when outlineStyle is not 'none'.",
-		// [Workaround] cohesion/cohesionFamilies/cohesionTones/cleanup は AdvancedOptionKey
-		// に自動的に含まれるため、この Record を満たすには説明文が要る。ADVANCED_OPTION_SPECS
-		// への正式な登録は別チケットのタスク（M4.1 plan Task 4）で行う -- ここではまだ
-		// --advanced からは絶対に触れない。
 		cohesion:
-			"Group an area's colours in Oklab before cell sampling, so shading reads as a few deliberate bands instead of near-random per-cell picks. On by default.",
+			"Group an area's colours in Oklab before cell sampling, so shading reads as a few " +
+			"deliberate bands instead of near-random per-cell picks. On by default.",
 		cohesionFamilies:
-			"How many Oklab colour families to group an image into before tracing. Higher keeps more distinct areas; the shipped default (14) is the spike's own measured value.",
+			"How many Oklab colour families to group an image into before tracing. Higher keeps " +
+			"more distinct areas; the shipped default (14) is the spike's own measured value.",
 		cohesionTones:
-			"How many tones each colour area is snapped to. 2 (the default) was the spike's measured sweet spot; going higher adds grain without adding faithfulness.",
+			"How many tones each colour area is snapped to. 2 (the default) was the spike's " +
+			"measured sweet spot; going higher adds grain without adding faithfulness.",
 		cleanup:
-			"Run four small tidy-up rules after palette mapping: remove lone stray pixels, doubled corners on one-pixel lines, one-pixel dents/bumps, and uneven staircase steps. On by default.",
+			"Run four small tidy-up rules after palette mapping: remove lone stray pixels, doubled " +
+			"corners on one-pixel lines, one-pixel dents/bumps, and uneven staircase steps. On by default.",
 	};
 
 const AUTO_BEHAVIOR_VALUES: Readonly<Record<AutoBehaviorSetting, string>> = {
