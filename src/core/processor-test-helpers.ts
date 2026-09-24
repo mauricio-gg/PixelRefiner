@@ -157,6 +157,57 @@ export const getExpectPath = (fixtureBase: string): string =>
 		new URL(`../../test/fixtures/${fixtureBase}-expect.png`, import.meta.url),
 	);
 
+/**
+ * 12x12 の合成入力。cohesion（色域のグルーピング）と clean-up（迷いピクセル・
+ * 階段の段差の補正）の両方が有効なら見た目が変わるように作ってある：
+ * ノイズの乗った青灰色の領域（1〜5 行目）、緑一色の地に対する迷い赤ピクセル
+ * (8,8)、右端の 1 ピクセルだけの階段（0〜5 行目は列 10、6〜11 行目は列 11）、
+ * 透明な角（9〜11 行目・0〜2 列目）を持つ。
+ *
+ * [Policy] `src/core/processor.test.ts`（M4 の pre-cohesion ゴールデン）と
+ * `packages/mcp/src/engine/cohesion-renderer.test.ts`（同じゴールデンに対する
+ * cohesion オン/オフの比較）の両方が同じ入力を要るため、jscpd の重複検知に
+ * 引っかからないようここへ 1 箇所だけ定義する。
+ */
+export const mkCohesionInput = (): RawImage => {
+	const w = 12;
+	const h = 12;
+	const data = new Uint8ClampedArray(w * h * 4);
+	for (let y = 0; y < h; y++) {
+		for (let x = 0; x < w; x++) {
+			const i = (y * w + x) * 4;
+			const staircaseCol = y < 6 ? 10 : 11;
+			const transparent = y >= 9 && x < 3;
+			let r = 40;
+			let g = 160;
+			let b = 40;
+			let a = 255;
+			if (y >= 1 && y <= 5 && x >= 1 && x <= 5) {
+				const jitter = ((x * 5 + y * 3) % 4) - 2;
+				r = 90 + jitter;
+				g = 90 + jitter;
+				b = 120 + jitter;
+			}
+			if (x === 8 && y === 8) {
+				r = 220;
+				g = 20;
+				b = 20;
+			}
+			if (x === staircaseCol) {
+				r = 20;
+				g = 20;
+				b = 200;
+			}
+			if (transparent) a = 0;
+			data[i] = r;
+			data[i + 1] = g;
+			data[i + 2] = b;
+			data[i + 3] = a;
+		}
+	}
+	return { width: w, height: h, data };
+};
+
 const sanitizeForPath = (s: string): string => {
 	const out = s
 		.trim()

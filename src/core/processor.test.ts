@@ -8,6 +8,7 @@ import {
 	expectSameImageExcept,
 	getExpectPath,
 	makeDebugHook,
+	mkCohesionInput,
 	RESIZE_WITH_TRIMMING_AUTO_EDGE_PIXELS,
 	readPngAsRawImage,
 	UPDATE_EXPECT,
@@ -217,6 +218,23 @@ describe("processImage", () => {
 			expect(alphaAt(0, 3)).toBe(0);
 			expect(alphaAt(3, 3)).toBe(0);
 			expect(alphaAt(1, 1)).toBe(255);
+		});
+	});
+
+	describe("cohesion off (M4 golden)", () => {
+		it("matches the pre-M4 golden for a forced refine (capture with UPDATE_EXPECT=1)", async () => {
+			const result = processImage(mkCohesionInput(), {
+				forcePixelsW: 8,
+				forcePixelsH: 8,
+			});
+			const expected = await readPngAsRawImage(
+				getExpectPath("cohesion-off-forced"),
+			);
+			expectSameImage(
+				result.result,
+				expected,
+				getExpectPath("cohesion-off-forced"),
+			);
 		});
 	});
 
