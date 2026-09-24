@@ -124,12 +124,25 @@ const labelConnectedAreas = (
  * MERGE_MIN_PX 未満のすべての領域を、最も色が近い生存中の隣接領域へ統合する。ただし
  * その隣接領域が MERGE_KEEP_THRESHOLD より Oklab で遠ければ「本物の細部」として残す。
  * `pipeline.py` の `merge_small_areas` の直接移植 -- 「安定するまで繰り返す」ループも
- * 「最も色が近い生存中の隣接領域を探す」探索も同じ。ただし、小さい領域 1 つごとに画像
- * 全体を再走査する（Python の素直な移植そのままだと `O(小領域数 x 画素数)` になり、
- * スパイクの検証用の小さい素材では問題なくても、迷い領域が何千とある本番のデン素材では
- * 重すぎる）代わりに、1 パスごとに一度だけ「領域 -> 画素インデックス一覧」を作り直す
- * （`O(画素数)`）。[Intended] 同じパス内で先に統合された領域を後続の小領域が見えるよう、
- * 統合のたびにその一覧をその場で更新する。
+ * 「最も色が近い生存中の隣接領域を探す」探索も同じ。
+ *
+ * [Intended] 比較に使う隣接領域の色は、その領域の「境界で接している画素だけ」の平均
+ * ではなく、`pipeline.py` の `_area_mean_oklab` と同じく「その領域全体」の平均で
+ * なければならない（code-guardian round 2, S1）。領域ごとの Oklab 合計値と画素数を
+ * 1 つのテーブルで持ち、統合のたびに吸収先へ加算することで、`_area_mean_oklab` を
+ * 呼び出すたびに領域全体を再走査せずに同じ意味の平均を保つ。
+ *
+ * 小さい領域 1 つごとに画像全体を再走査する（Python の素直な移植そのままだと
+ * `O(小領域数 x 画素数)` になり、スパイクの検証用の小さい素材では問題なくても、迷い
+ * 領域が何千とある本番のデン素材では重すぎる）代わりに、1 パスごとに一度だけ
+ * 「領域 -> 画素インデックス一覧」を作り直す（`O(画素数)`）。[Intended] 同じパス内で
+ * 先に統合された領域を後続の小領域が見えるよう、統合のたびにその一覧をその場で更新する。
+ *
+ * [Intended] 小領域を処理する順序は `pipeline.py` に合わせる: `np.unique` は領域 id の
+ * 昇順を返し、続く `sorted(..., key=lambda i: sizes[i])` は Python の安定ソートなので、
+ * サイズが同点のときは昇順の領域 id のまま残る。ここでも (サイズ, 領域 id 昇順) の
+ * 複合キーで明示的に比較し、Map の挿入順（＝最初に出現した順）に依存しない
+ * （code-guardian round 2, S1 の指摘に含まれる並び順の指摘）。
  */
 const mergeSmallAreas = (
 	areaIds: Int32Array,
@@ -138,6 +151,28 @@ const mergeSmallAreas = (
 	height: number,
 ): Int32Array => {
 	const areas = areaIds.slice();
+
+	// 領域ごとの Oklab 合計値と画素数。`_area_mean_oklab` と同じ「領域全体の平均」を
+	// 統合のたびに更新して保つ。
+	const areaTotal = new Map<number, { sum: Oklab; n: number }>();
+	for (let idx = 0; idx < areas.length; idx++) {
+		const id = areas[idx];
+		if (id === 0) continue;
+		const lab = oklabByPixel[idx];
+		const entry = areaTotal.get(id) ?? { sum: { L: 0, a: 0, b: 0 }, n: 0 };
+		entry.sum = {
+			L: entry.sum.L + lab.L,
+			a: entry.sum.a + lab.a,
+			b: entry.sum.b + lab.b,
+		};
+		entry.n += 1;
+		areaTotal.set(id, entry);
+	}
+	const meanOfArea = (id: number): Oklab => {
+		const { sum, n } = areaTotal.get(id) as { sum: Oklab; n: number };
+		return { L: sum.L / n, a: sum.a / n, b: sum.b / n };
+	};
+
 	for (;;) {
 		const areaToPixels = new Map<number, number[]>();
 		for (let idx = 0; idx < areas.length; idx++) {
@@ -147,24 +182,21 @@ const mergeSmallAreas = (
 			if (list) list.push(idx);
 			else areaToPixels.set(id, [idx]);
 		}
-		const small = [...areaToPixels.entries()]
-			.filter(([, px]) => px.length < MERGE_MIN_PX)
-			.sort((a, b) => a[1].length - b[1].length)
-			.map(([id]) => id);
+		const small = [...areaToPixels.keys()]
+			.filter((id) => (areaToPixels.get(id) as number[]).length < MERGE_MIN_PX)
+			.sort((a, b) => {
+				const sizeDiff =
+					(areaToPixels.get(a) as number[]).length -
+					(areaToPixels.get(b) as number[]).length;
+				return sizeDiff !== 0 ? sizeDiff : a - b;
+			});
 		if (small.length === 0) break;
 		let mergedAny = false;
 		for (const areaId of small) {
 			const pixelIdxs = areaToPixels.get(areaId);
 			if (!pixelIdxs) continue; // このパス内ですでに吸収済み
-			const neighbourSums = new Map<number, { sum: Oklab; n: number }>();
-			let sumHere: Oklab = { L: 0, a: 0, b: 0 };
+			const neighbourIds = new Set<number>();
 			for (const idx of pixelIdxs) {
-				const lab = oklabByPixel[idx];
-				sumHere = {
-					L: sumHere.L + lab.L,
-					a: sumHere.a + lab.a,
-					b: sumHere.b + lab.b,
-				};
 				const x = idx % width;
 				const y = Math.floor(idx / width);
 				for (let dy = -1; dy <= 1; dy++) {
@@ -175,32 +207,16 @@ const mergeSmallAreas = (
 						if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
 						const nId = areas[ny * width + nx];
 						if (nId === 0 || nId === areaId) continue;
-						const entry = neighbourSums.get(nId) ?? {
-							sum: { L: 0, a: 0, b: 0 },
-							n: 0,
-						};
-						const nLab = oklabByPixel[ny * width + nx];
-						entry.sum = {
-							L: entry.sum.L + nLab.L,
-							a: entry.sum.a + nLab.a,
-							b: entry.sum.b + nLab.b,
-						};
-						entry.n += 1;
-						neighbourSums.set(nId, entry);
+						neighbourIds.add(nId);
 					}
 				}
 			}
-			if (neighbourSums.size === 0) continue; // 孤立した領域: そのまま残す
-			const meanHere = {
-				L: sumHere.L / pixelIdxs.length,
-				a: sumHere.a / pixelIdxs.length,
-				b: sumHere.b / pixelIdxs.length,
-			};
+			if (neighbourIds.size === 0) continue; // 孤立した領域: そのまま残す
+			const meanHere = meanOfArea(areaId);
 			let bestId: number | null = null;
 			let bestDist = Number.POSITIVE_INFINITY;
-			for (const [nId, { sum, n }] of neighbourSums) {
-				const nMean = { L: sum.L / n, a: sum.a / n, b: sum.b / n };
-				const dist = oklabDistance(meanHere, nMean);
+			for (const nId of neighbourIds) {
+				const dist = oklabDistance(meanHere, meanOfArea(nId));
 				if (dist < bestDist) {
 					bestDist = dist;
 					bestId = nId;
@@ -212,6 +228,17 @@ const mergeSmallAreas = (
 				target.push(...pixelIdxs);
 				areaToPixels.set(bestId, target);
 				areaToPixels.delete(areaId);
+
+				const hereTotal = areaTotal.get(areaId) as { sum: Oklab; n: number };
+				const bestTotal = areaTotal.get(bestId) as { sum: Oklab; n: number };
+				bestTotal.sum = {
+					L: bestTotal.sum.L + hereTotal.sum.L,
+					a: bestTotal.sum.a + hereTotal.sum.a,
+					b: bestTotal.sum.b + hereTotal.sum.b,
+				};
+				bestTotal.n += hereTotal.n;
+				areaTotal.delete(areaId);
+
 				mergedAny = true;
 			}
 		}
@@ -278,6 +305,12 @@ const kMeans1D = (
  * だけを数える 5x5 多数決フィルタ、そして各帯の画素は「量子化後の系統色」ではなく
  * 「元の RGB そのもの」の平均を取る -- 出力色が加工前のソース画素から来る点も含めて
  * `pipeline.py` の `make_v2` と一致させている。
+ *
+ * [Intended] 帯の平均色は、平滑化された `smoothed` の所属ではなく k-means が出した
+ * 生の帯（`bandByPixel`）の所属で計算する -- `pipeline.py` の `band_mean_color` は
+ * `labels`（平滑化前）から作り、書き込み先だけ `smoothed_band_map`（平滑化後）で
+ * 選ぶ（code-guardian round 2, N1）。塗る場所と色の出どころを取り違えると、平滑化で
+ * 帯が動いた画素の色が「動いた先の帯」ではなく「動いた画素自身」の色に引っ張られる。
  */
 const snapTones = (
 	rgb: readonly RGB[],
@@ -319,9 +352,15 @@ const snapTones = (
 					counts.set(nBand, (counts.get(nBand) ?? 0) + 1);
 				}
 			}
+			// [Intended] 同点は帯番号の昇順で最初に出た方を勝たせる --
+			// `pipeline.py` は `bands_here`（昇順ソート済み）の順に積んだ配列へ
+			// `np.argmax` をかけており、`argmax` は同点なら最初（＝最小の帯番号）を
+			// 返す。`Map` の挿入順（5x5 窓の走査順）のままでは一致しない
+			// （code-guardian round 2, N2）。
 			let bestBand = bandByPixel.get(idx) as number;
 			let bestCount = -1;
-			for (const [band, count] of counts) {
+			for (const band of [...counts.keys()].sort((a, b) => a - b)) {
+				const count = counts.get(band) as number;
 				if (count > bestCount) {
 					bestCount = count;
 					bestBand = band;
@@ -334,7 +373,9 @@ const snapTones = (
 			{ r: number; g: number; b: number; n: number }
 		>();
 		for (const idx of pixelIdxs) {
-			const band = smoothed.get(idx) as number;
+			// [Intended] 生の帯（平滑化前）で集計する -- 下の書き込みループは
+			// `smoothed`（平滑化後）で選ぶが、色そのものは常にこちらから取る（N1）。
+			const band = bandByPixel.get(idx) as number;
 			const entry = bandSums.get(band) ?? { r: 0, g: 0, b: 0, n: 0 };
 			entry.r += rgb[idx].r;
 			entry.g += rgb[idx].g;
@@ -448,5 +489,14 @@ export const applyCohesionStage = (
 		flattenedRgba[i * 4 + 2] = b;
 		flattenedRgba[i * 4 + 3] = alpha;
 	}
-	return renderer(flattenedRgba, image.width, image.height, target);
+	const rendered = renderer(flattenedRgba, image.width, image.height, target);
+	// [Intended] renderer の戻り値が target ちょうどのサイズであることを検証する --
+	// スパイクの `make_v3` も `assert arr.shape[:2] == (h, w)` で同じことを確かめている
+	// （fail loud: renderer の契約違反を後段の cell サンプリングまで運ばせない）。
+	if (rendered.width !== target.width || rendered.height !== target.height) {
+		throw new Error(
+			`cohesion: renderer returned ${rendered.width}x${rendered.height}, expected ${target.width}x${target.height}`,
+		);
+	}
+	return rendered;
 };

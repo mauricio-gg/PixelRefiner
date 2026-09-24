@@ -50,6 +50,160 @@ const fakeResizeRenderer: CohesionRenderer = (
 	return { width: target.width, height: target.height, data };
 };
 
+/**
+ * 一様な背景の中に矩形パッチを 1 つだけ置いた画像。境界に触れないので、パッチを除いた
+ * 背景は必ず 1 つの連結領域になる -- mergeSmallAreas の「近い色は統合する／遠い色は
+ * 本物の細部として残す」判定だけを、他の要因抜きで検証するための構図。
+ */
+const mkPatchImage = (
+	canvasW: number,
+	canvasH: number,
+	patch: {
+		x: number;
+		y: number;
+		w: number;
+		h: number;
+		color: [number, number, number];
+	},
+	backgroundColor: [number, number, number] = [60, 60, 60],
+): RawImage => {
+	const data = new Uint8ClampedArray(canvasW * canvasH * 4);
+	for (let y = 0; y < canvasH; y++) {
+		for (let x = 0; x < canvasW; x++) {
+			const i = (y * canvasW + x) * 4;
+			const inPatch =
+				x >= patch.x &&
+				x < patch.x + patch.w &&
+				y >= patch.y &&
+				y < patch.y + patch.h;
+			const [r, g, b] = inPatch ? patch.color : backgroundColor;
+			data[i] = r;
+			data[i + 1] = g;
+			data[i + 2] = b;
+			data[i + 3] = 255;
+		}
+	}
+	return { width: canvasW, height: canvasH, data };
+};
+
+/** 出力に含まれる distinct な不透明色の数。tones=1 で使うと「何個の領域に分かれたか」の
+ * 直接の証拠になる -- 統合されれば領域は 1 つの色に、されなければ複数の色になる。 */
+const distinctColours = (image: RawImage): Set<string> => {
+	const colours = new Set<string>();
+	for (let i = 0; i < image.data.length; i += 4) {
+		if (image.data[i + 3] === 0) continue;
+		colours.add(`${image.data[i]},${image.data[i + 1]},${image.data[i + 2]}`);
+	}
+	return colours;
+};
+
+/**
+ * 決定論性テスト用の、意図的に散らかった多領域入力。4 象限それぞれ別の基準色に、
+ * 座標だけで決まるジッターを乗せている。families=14/tones=2 でクラスタリングすると
+ * 小さく似た色の領域がいくつもでき、mergeSmallAreas の統合判定やタイブレークが
+ * 実際に発生する -- 単色画像では検知できない「Map/Set の反復順に依存した非決定性」
+ * を検知できる入力。
+ */
+const noisyMultiAreaImage = (size: number): RawImage => {
+	const data = new Uint8ClampedArray(size * size * 4);
+	const bases: ReadonlyArray<[number, number, number]> = [
+		[60, 60, 60],
+		[180, 60, 60],
+		[60, 180, 60],
+		[60, 60, 180],
+	];
+	for (let y = 0; y < size; y++) {
+		for (let x = 0; x < size; x++) {
+			const i = (y * size + x) * 4;
+			const quadrant = (x < size / 2 ? 0 : 1) + (y < size / 2 ? 0 : 2);
+			const [br, bg, bb] = bases[quadrant];
+			const jitter = ((x * 7 + y * 13) % 9) - 4;
+			data[i] = br + jitter;
+			data[i + 1] = bg + jitter;
+			data[i + 2] = bb + jitter;
+			data[i + 3] = 255;
+		}
+	}
+	return { width: size, height: size, data };
+};
+
+describe("mergeSmallAreas via applyCohesionStage (tones=1, so one area = one output colour)", () => {
+	it("merges a small area (12px, under MERGE_MIN_PX) into the background when the colour is close (Oklab dist ~0.017)", () => {
+		const image = mkPatchImage(8, 8, {
+			x: 2,
+			y: 2,
+			w: 4,
+			h: 3,
+			color: [66, 64, 63],
+		});
+		const result = applyCohesionStage(
+			image,
+			{ width: 8, height: 8 },
+			14,
+			1,
+			fakeResizeRenderer,
+		);
+		expect(distinctColours(result).size).toBe(1);
+	});
+
+	it("keeps a small area (12px, under MERGE_MIN_PX) separate when the colour is far (Oklab dist ~0.365, real detail)", () => {
+		const image = mkPatchImage(8, 8, {
+			x: 2,
+			y: 2,
+			w: 4,
+			h: 3,
+			color: [250, 10, 10],
+		});
+		const result = applyCohesionStage(
+			image,
+			{ width: 8, height: 8 },
+			14,
+			1,
+			fakeResizeRenderer,
+		);
+		const colours = distinctColours(result);
+		expect(colours.size).toBe(2);
+		expect(colours.has("60,60,60")).toBe(true);
+		expect(colours.has("250,10,10")).toBe(true);
+	});
+
+	it("merges a close-coloured area of exactly MERGE_MIN_PX - 1 (19px)", () => {
+		const image = mkPatchImage(25, 5, {
+			x: 3,
+			y: 2,
+			w: 19,
+			h: 1,
+			color: [66, 64, 63],
+		});
+		const result = applyCohesionStage(
+			image,
+			{ width: 25, height: 5 },
+			14,
+			1,
+			fakeResizeRenderer,
+		);
+		expect(distinctColours(result).size).toBe(1);
+	});
+
+	it("does not merge a close-coloured area of exactly MERGE_MIN_PX (20px) -- the boundary is exclusive", () => {
+		const image = mkPatchImage(25, 5, {
+			x: 3,
+			y: 2,
+			w: 20,
+			h: 1,
+			color: [66, 64, 63],
+		});
+		const result = applyCohesionStage(
+			image,
+			{ width: 25, height: 5 },
+			14,
+			1,
+			fakeResizeRenderer,
+		);
+		expect(distinctColours(result).size).toBe(2);
+	});
+});
+
 describe("applyCohesionStage", () => {
 	it("throws a plain named error when no renderer is supplied", () => {
 		const image = solidImage(4, 4, [10, 10, 10]);
@@ -170,18 +324,21 @@ describe("applyCohesionStage", () => {
 		}
 	});
 
-	it("is deterministic: the same input produces byte-identical output twice", () => {
-		const image = solidImage(16, 16, [140, 90, 60]);
+	it("is deterministic on a noisy multi-area input: the same input produces byte-identical output twice", () => {
+		// [Policy] 単色画像では領域が 1 つしかできず、Map/Set の反復順に依存した非決定性が
+		// あっても絶対に検知できない（code-guardian round 2, S3）。複数の小領域・統合・
+		// タイブレークが実際に起きる入力でなければ、このテストは意味を持たない。
+		const image = noisyMultiAreaImage(20);
 		const first = applyCohesionStage(
 			image,
-			{ width: 16, height: 16 },
+			{ width: 20, height: 20 },
 			14,
 			2,
 			fakeResizeRenderer,
 		);
 		const second = applyCohesionStage(
 			image,
-			{ width: 16, height: 16 },
+			{ width: 20, height: 20 },
 			14,
 			2,
 			fakeResizeRenderer,

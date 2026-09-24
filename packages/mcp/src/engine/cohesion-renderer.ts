@@ -80,7 +80,14 @@ export const ensureCohesionRendererReady = (): Promise<void> => {
 				"@resvg/resvg-wasm/index_bg.wasm",
 			);
 			await initWasm(readFileSync(wasmPath));
-		})();
+		})().catch((error: unknown) => {
+			// [Intended] 失敗したまま `ready` を残すと、次に呼んだ側も同じ失敗した
+			// Promise を掴んで、もう成功しようがない状態のまま延々と失敗し続ける。
+			// リトライできるよう null に戻したうえで、今回の呼び出し自身には
+			// 失敗をそのまま伝える（code-guardian round 2, N4）。
+			ready = null;
+			throw error;
+		});
 	}
 	return ready;
 };
@@ -104,9 +111,13 @@ export const nodeCohesionRenderer: CohesionRenderer = (
 		shapeRendering: 1,
 	});
 	const rendered = renderer.render();
-	return {
-		width: rendered.width,
-		height: rendered.height,
-		data: new Uint8ClampedArray(rendered.pixels),
-	};
+	// [Intended] 画素を JS 側の配列へコピーし終えたら、wasm 側が持つ両方のオブジェクトを
+	// 明示的に解放する -- 呼び出し元に任せると、バッチ処理で何百枚も回したときに wasm の
+	// メモリが解放されないまま積み上がる（code-guardian round 2, N5）。
+	const data = new Uint8ClampedArray(rendered.pixels);
+	const width = rendered.width;
+	const height = rendered.height;
+	rendered.free();
+	renderer.free();
+	return { width, height, data };
 };
