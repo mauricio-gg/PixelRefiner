@@ -89,16 +89,20 @@ type SmoothingBuffers = {
 };
 
 /**
- * サンプル色を平滑化する正方近傍の一辺の長さを求める。
+ * サンプル色を平滑化する正方近傍の半径（中心から片側への広さ）を求める。
+ * 0 以下なら平滑化しない。
  *
- * [Intended] sampleWindow が 3 以下のときは必ず 0（平滑化なし）を返す。デフォルト値 3 で
+ * [Intended] sampleWindow が 3 以下のときは half <= 0 になり、平滑化しない。デフォルト値 3 で
  * 呼び出す既存経路（かんたん設定の既定、ブラウザの詳細設定パネルが常に送る値、
  * test/quality/cases.json が固定する 3・1 のケース）の出力をこの機能追加で変えない、という
- * ハード制約を守るための境界線がここにある。sampleWindow=5→3x3, 7→5x5, 9→7x7 と、
- * sampleWindow-2 がそのまま近傍の一辺になる。
+ * ハード制約を守るための境界線がここにある。偶数の sampleWindow は floor(sampleWindow/2) により
+ * 1 つ上の奇数値と同じ half になる（legacy-median が偶数窓を half = floor(sampleWindow/2) で
+ * 扱うのに合わせた）。結果として sampleWindow=4 は 5 と、6 は 7 と、8 は 9 と同じ近傍になり、
+ * 4・5→半径1(3x3)、6・7→半径2(5x5)、8・9→半径3(7x7) となる。近傍はつねに
+ * x-half..x+half（画像境界でクランプ）の正方形で、中心はずれない。
  */
-const colorSmoothingSide = (sampleWindow: number): number =>
-	sampleWindow > 3 ? sampleWindow - 2 : 0;
+const colorSmoothingHalf = (sampleWindow: number): number =>
+	Math.floor(sampleWindow / 2) - 1;
 
 /** 再利用バッファの中で [0, count) の範囲だけを挿入ソートする（要素数が小さいため十分速い）。 */
 const sortRange = (buffer: Uint8Array, count: number): void => {
@@ -132,16 +136,14 @@ const smoothSampleColor = (
 	image: RawImage,
 	x: number,
 	y: number,
-	side: number,
+	half: number,
 	alphaThreshold: number,
 	buffers: SmoothingBuffers,
 ): boolean => {
-	const before = Math.floor((side - 1) / 2);
-	const after = side - 1 - before;
-	const x0 = Math.max(0, x - before);
-	const x1 = Math.min(image.width - 1, x + after);
-	const y0 = Math.max(0, y - before);
-	const y1 = Math.min(image.height - 1, y + after);
+	const x0 = Math.max(0, x - half);
+	const x1 = Math.min(image.width - 1, x + half);
+	const y0 = Math.max(0, y - half);
+	const y1 = Math.min(image.height - 1, y + half);
 	const data = image.data;
 	const imgW = image.width;
 	let count = 0;
@@ -250,7 +252,7 @@ const collectSamples = (
 	bounds: CellBounds,
 	workspace: Workspace,
 	limit: number,
-	smoothingSide: number,
+	smoothingHalf: number,
 	alphaThreshold: number,
 	smoothingBuffers: SmoothingBuffers | null,
 ): number => {
@@ -298,14 +300,18 @@ const collectSamples = (
 			// [Intended] 平滑化はこのサンプルの色（Oklab を含め、以降の代表色計算が見る値）
 			// だけを置き換える。アルファはここでは触れない — 被覆率やハードアルファの
 			// 0/255 判定、にじみ判定を平滑化で動かさないため。
+			// [Intended] 細線の連続性判定（hasThinContinuity）は候補の色を隣接セルの生の
+			// 元画素と比較するため、平滑化された候補は一致しにくくなり、1px の線を優先
+			// しなくなることがある。これは許容する — オプションの説明が「細部がぼやけうる」
+			// と warn しているのはこのため。
 			if (
-				smoothingSide > 0 &&
+				smoothingHalf > 0 &&
 				smoothingBuffers &&
 				smoothSampleColor(
 					image,
 					x,
 					y,
-					smoothingSide,
+					smoothingHalf,
 					alphaThreshold,
 					smoothingBuffers,
 				)
@@ -663,9 +669,10 @@ const findMedoid = (
 export const createCellSampler = (options: CellSamplerOptions): CellSampler => {
 	const sampleLimit = Math.max(1, Math.floor(options.maxSamplesPerCell));
 	const workspace = createWorkspace(sampleLimit);
-	const smoothingSide = colorSmoothingSide(options.sampleWindow);
+	const smoothingHalf = colorSmoothingHalf(options.sampleWindow);
+	const smoothingSide = smoothingHalf > 0 ? smoothingHalf * 2 + 1 : 0;
 	// [Intended] 平滑化用バッファはサンプラー生成時に 1 回だけ確保し、セルごと・
-	// サンプルごとには確保しない。無効時（sampleWindow<=3）は null のままにして分岐で外す。
+	// サンプルごとには確保しない。無効時（half<=0）は null のままにして分岐で外す。
 	const smoothingBuffers: SmoothingBuffers | null =
 		smoothingSide > 0
 			? {
@@ -687,7 +694,7 @@ export const createCellSampler = (options: CellSamplerOptions): CellSampler => {
 			bounds,
 			workspace,
 			sampleLimit,
-			smoothingSide,
+			smoothingHalf,
 			options.alphaThreshold,
 			smoothingBuffers,
 		);

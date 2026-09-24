@@ -330,60 +330,91 @@ describe("cell sampler", () => {
 		expect(normalized.cellSamplingMode).toBe("edge-aware");
 	});
 
-	it("lets sampleWindow smooth noisy samples toward the true colour in the default mode, while 1 and 3 stay a no-op", () => {
-		// 20x20 の単一セル。地の色はベース (100,100,100) で、x・y が両方とも奇数の画素
-		// だけを外れ値 (220,220,220) にする。無平滑化のストライプ状サンプリングは
-		// x,y ともに奇数の座標だけを見るため、sampleWindow<=3 では毎回この外れ値だけを拾う。
-		// 5x5 近傍で中央値を取ると（奇数×奇数はたかだか 9/25）多数派の地の色へ戻る。
-		const size = 20;
+	it("lets sampleWindow smooth the sampled pixel toward the true colour in hard-alpha-medoid, while 1 and 3 stay a no-op", () => {
+		// 9x9 の単一セルを 1 サンプルだけ（cell 中心 (4,4) 固定）でサンプリングする。
+		// 地の色はベース (100,100,100) で、中心 (4,4) と、その右・下・右下の 3 マス
+		// (5,4)(4,5)(5,5) だけを外れ値 (220,220,220) にする ─ ちょうどオフセンターな
+		// 2 幅の窓（sampleWindow=4 の旧マッピング）が拾う 4 マスと同じ位置。
+		// 中心の揃った 3x3（sampleWindow=4 の新マッピング）ならこの 4 マスの外側にある
+		// 5 マスの地の色が多数派になり中央値は地の色に戻るが、右下だけを見る旧マッピングは
+		// 4 マス全部が外れ値のままで補正できない。
+		const size = 9;
+		const center = 4;
 		const base = [100, 100, 100] as const;
 		const outlier = 220;
 		const data = new Uint8ClampedArray(size * size * 4);
 		for (let y = 0; y < size; y += 1) {
 			for (let x = 0; x < size; x += 1) {
-				const isOutlier = x % 2 === 1 && y % 2 === 1;
 				const idx = (y * size + x) * 4;
-				data[idx] = isOutlier ? outlier : base[0];
-				data[idx + 1] = isOutlier ? outlier : base[1];
-				data[idx + 2] = isOutlier ? outlier : base[2];
+				data[idx] = base[0];
+				data[idx + 1] = base[1];
+				data[idx + 2] = base[2];
 				data[idx + 3] = 255;
 			}
+		}
+		const outlierCells = [
+			[center, center],
+			[center + 1, center],
+			[center, center + 1],
+			[center + 1, center + 1],
+		] as const;
+		for (const [ox, oy] of outlierCells) {
+			const idx = (oy * size + ox) * 4;
+			data[idx] = outlier;
+			data[idx + 1] = outlier;
+			data[idx + 2] = outlier;
 		}
 		const noisy: RawImage = { width: size, height: size, data };
 		const noisyGrid = grid(size, size);
 		const baseOptions = {
 			mode: "hard-alpha-medoid",
-			maxSamplesPerCell: 100,
+			maxSamplesPerCell: 1,
 			alphaThreshold: 16,
 			preserveThinFeatures: false,
 		} as const;
 
-		const window1 = downsample(noisy, noisyGrid, {
+		const sampleWindow1 = downsample(noisy, noisyGrid, {
 			...baseOptions,
 			sampleWindow: 1,
 		});
-		const window3 = downsample(noisy, noisyGrid, {
+		const sampleWindow3 = downsample(noisy, noisyGrid, {
 			...baseOptions,
 			sampleWindow: 3,
 		});
-		const window7 = downsample(noisy, noisyGrid, {
+		const sampleWindow4 = downsample(noisy, noisyGrid, {
+			...baseOptions,
+			sampleWindow: 4,
+		});
+		const sampleWindow7 = downsample(noisy, noisyGrid, {
 			...baseOptions,
 			sampleWindow: 7,
 		});
 
 		// 1 と 3 は常に no-op: 出力は完全に一致する。
-		expect(Array.from(window1.data)).toEqual(Array.from(window3.data));
+		expect(Array.from(sampleWindow1.data)).toEqual(
+			Array.from(sampleWindow3.data),
+		);
 
 		const distanceToBase = (pixel: Uint8ClampedArray): number =>
 			(pixel[0] - base[0]) ** 2 +
 			(pixel[1] - base[1]) ** 2 +
 			(pixel[2] - base[2]) ** 2;
 
-		const distance3 = distanceToBase(window3.data);
-		const distance7 = distanceToBase(window7.data);
+		const distance3 = distanceToBase(sampleWindow3.data);
+		const distance4 = distanceToBase(sampleWindow4.data);
+		const distance7 = distanceToBase(sampleWindow7.data);
 
 		// 大きい sampleWindow は選ばれる色を変え、かつ真のベース色に近づける。
-		expect(Array.from(window7.data)).not.toEqual(Array.from(window3.data));
+		expect(Array.from(sampleWindow7.data)).not.toEqual(
+			Array.from(sampleWindow3.data),
+		);
 		expect(distance7).toBeLessThan(distance3);
+
+		// 偶数の sampleWindow=4 も、中心のずれた 2 幅平均ではなく中心の揃った近傍で
+		// 平滑化され、3 より色を変えつつ真のベース色に近づく。
+		expect(Array.from(sampleWindow4.data)).not.toEqual(
+			Array.from(sampleWindow3.data),
+		);
+		expect(distance4).toBeLessThan(distance3);
 	});
 });

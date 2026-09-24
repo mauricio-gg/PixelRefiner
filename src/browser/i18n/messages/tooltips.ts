@@ -98,10 +98,10 @@ export const tooltipMessages = defineMessages({
 			"设置网格检测使用的减色级别。\n\n高：颜色会被归并，更抗噪，但细微色差可能丢失。\n低：能捕捉更细的颜色边界，但更容易误判噪点。\n\n范围：{min} 到 {max} (默认：{default})",
 	},
 	"tooltip.help.sample_window": {
-		ja: "Auto・Hintでグリッドサイズ候補を比較する際の参照範囲（ピクセル数）です。\n\n【大】グリッド検出がノイズに強くなりますが、細かな境界を見落とす可能性があります。\n【小】細かな境界を捉えやすくなりますが、位置ズレやノイズの影響を強く受けます。\n\n設定範囲: {min}〜{max} (デフォルト: {default})",
-		en: "The reference range (in pixels) used to compare grid-size candidates in Auto and Hint modes.\n\nHigh: Grid detection is more resistant to noise, but fine boundaries may be overlooked.\nLow: Grid detection follows fine boundaries, but is more affected by misalignment and noise.\n\nRange: {min} to {max} (Default: {default})",
+		ja: "Auto・Hintでグリッドサイズ候補を比較する際の参照範囲（ピクセル数）です。\n\n【大】グリッド検出がノイズに強くなりますが、細かな境界を見落とす可能性があります。\n【小】細かな境界を捉えやすくなりますが、位置ズレやノイズの影響を強く受けます。\n\n3 より大きい値では、各セルをサンプリングする際の色も中央値で平滑化します。ノイズは減りますが、1px の細部がぼやけることがあります。\n\n設定範囲: {min}〜{max} (デフォルト: {default})",
+		en: "The reference range (in pixels) used to compare grid-size candidates in Auto and Hint modes.\n\nHigh: Grid detection is more resistant to noise, but fine boundaries may be overlooked.\nLow: Grid detection follows fine boundaries, but is more affected by misalignment and noise.\n\nAbove 3 it also median-smooths the colours each cell is sampled from, which reduces noise but can blur one-pixel details.\n\nRange: {min} to {max} (Default: {default})",
 		"zh-CN":
-			"在自动和提示模式下比较网格尺寸候选项时使用的参考范围（像素数）。\n\n高：网格检测更能抵抗噪点，但可能忽略细微边界。\n低：更容易捕捉细微边界，但更容易受错位和噪点影响。\n\n范围：{min} 到 {max} (默认：{default})",
+			"在自动和提示模式下比较网格尺寸候选项时使用的参考范围（像素数）。\n\n高：网格检测更能抵抗噪点，但可能忽略细微边界。\n低：更容易捕捉细微边界，但更容易受错位和噪点影响。\n\n大于 3 时，还会对每个单元格采样的颜色进行中值平滑，可减少噪点，但可能使 1 像素的细节变得模糊。\n\n范围：{min} 到 {max} (默认：{default})",
 	},
 	"tooltip.help.cell_sampling_mode": {
 		ja: "論理ピクセル 1 つの代表色をどう選ぶかを決めます。\n\nハードアルファ: 補間で生じた中間の透明度を残しません。\n半透明を保持: 面積被覆としての半透明を残します。意図的に柔らかい縁向けです。\n互換: 旧方式の中央値サンプラーです。透かし除去後に自動で使われるのもこれです。",
