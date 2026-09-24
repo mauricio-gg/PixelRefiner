@@ -155,6 +155,10 @@ export const createEngine = (): PixelRefinerEngine => {
 		const decoded = await decodeInput(input);
 		const settings = resolveSettings(request.settings);
 		const { options } = settings;
+		if (options.cohesion) {
+			await ensureCohesionRendererReady();
+			options.cohesionRenderer = nodeCohesionRenderer;
+		}
 		const cacheKey = cacheKeyOf(decoded.image, options);
 		// [Intended] detectGrid を直接呼ばずに通常の処理を 1 回通す。グリッド検出は背景処理を
 		// 済ませた形状に対して走り、分類は auto 経路でしか行われないので、生の入力に対する

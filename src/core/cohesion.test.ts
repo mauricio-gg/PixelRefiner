@@ -77,17 +77,28 @@ describe("applyCohesionStage", () => {
 		).not.toThrow();
 	});
 
-	it("does not throw on a fully transparent crop", () => {
+	it("returns a fully transparent target-sized image without calling the renderer, for a fully transparent crop", () => {
 		const image = transparentImage(6, 6);
-		expect(() =>
-			applyCohesionStage(
-				image,
-				{ width: 6, height: 6 },
-				14,
-				2,
-				fakeResizeRenderer,
-			),
-		).not.toThrow();
+		let rendererCalled = false;
+		const spyRenderer: CohesionRenderer = (
+			rgba,
+			sourceWidth,
+			sourceHeight,
+			target,
+		) => {
+			rendererCalled = true;
+			return fakeResizeRenderer(rgba, sourceWidth, sourceHeight, target);
+		};
+		const result = applyCohesionStage(
+			image,
+			{ width: 6, height: 6 },
+			14,
+			2,
+			spyRenderer,
+		);
+		expect(rendererCalled).toBe(false);
+		expect([result.width, result.height]).toEqual([6, 6]);
+		expect(result.data.every((byte) => byte === 0)).toBe(true);
 	});
 
 	it("does not throw on a 1x1 target", () => {
@@ -118,6 +129,8 @@ describe("applyCohesionStage", () => {
 	it("zeroes the colour under fully transparent pixels before handing them to the renderer", () => {
 		// 透明な画素にも元の RGB が残っている画像 -- 背景除去後の working が持ちうる状態。
 		// スパイクの restore_alpha と同じく、cohesion は渡す前に透明部分の色をゼロで埋める。
+		// 不透明な画素を 1 つだけ混ぜてある: 全画素が透明だと新しい「不透明画素 0 件」ガードが
+		// 先に発火して renderer が呼ばれなくなり、この検証ができなくなるため。
 		const width = 4;
 		const height = 4;
 		const data = new Uint8ClampedArray(width * height * 4);
@@ -127,6 +140,7 @@ describe("applyCohesionStage", () => {
 			data[i + 2] = 10;
 			data[i + 3] = 0; // 完全透明だが RGB は非ゼロのまま残っている
 		}
+		data[3] = 255; // 画素 0 だけ不透明にする
 		let seenRgba: Uint8Array | undefined;
 		const capturingRenderer: CohesionRenderer = (
 			rgba,
@@ -148,7 +162,8 @@ describe("applyCohesionStage", () => {
 			capturingRenderer,
 		);
 		expect(seenRgba).toBeDefined();
-		for (let i = 0; i < (seenRgba as Uint8Array).length; i += 4) {
+		// 画素 0（唯一の不透明画素）は対象外 -- 透明な画素だけ RGB がゼロであることを確かめる。
+		for (let i = 4; i < (seenRgba as Uint8Array).length; i += 4) {
 			expect((seenRgba as Uint8Array)[i]).toBe(0);
 			expect((seenRgba as Uint8Array)[i + 1]).toBe(0);
 			expect((seenRgba as Uint8Array)[i + 2]).toBe(0);

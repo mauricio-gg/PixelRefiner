@@ -66,6 +66,27 @@ describe("applyCohesionStage with the real Node renderer", () => {
 		},
 	);
 
+	it("does not crash the real VTracer/resvg pipeline on a fully transparent crop", () => {
+		// applyCohesionStage の「不透明画素が 1 つも無ければ renderer を呼ばない」ガードが
+		// 無いと、VTracer の wasm は完全透明な画像で RuntimeError: unreachable を投げて
+		// 落ちる（実測で確認済み）。このテストは本物の renderer 経由でその落ち方が
+		// 実際に避けられていることを証明する -- フェイクの renderer では検知できない。
+		const image: RawImage = {
+			width: 6,
+			height: 6,
+			data: new Uint8ClampedArray(6 * 6 * 4),
+		};
+		const result = applyCohesionStage(
+			image,
+			{ width: 6, height: 6 },
+			14,
+			2,
+			nodeCohesionRenderer,
+		);
+		expect([result.width, result.height]).toEqual([6, 6]);
+		expect(result.data.every((byte) => byte === 0)).toBe(true);
+	});
+
 	it("with cohesion and cleanup off, matches the golden; with cohesion on (real renderer), it differs", async () => {
 		const golden = await readPngAsRawImage(
 			getExpectPath("cohesion-off-forced"),

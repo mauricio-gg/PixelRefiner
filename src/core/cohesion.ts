@@ -386,6 +386,26 @@ export const applyCohesionStage = (
 				"in production, a test fake in a test) or set cohesion: false",
 		);
 	}
+	// [Intended] 不透明な画素が 1 つも無いなら renderer を一切呼ばない。VTracer の wasm は
+	// 完全に透明な画像を渡すと `RuntimeError: unreachable` で異常終了することを実測で
+	// 確認済み（トレースする形が無いことがそのまま wasm 側の未定義動作になる）。グルーピング
+	// も階調スナップも「まとめる何か」があって初めて意味を持つので、対象が無ければ
+	// target サイズの完全透明画像を返して終える -- 新しいエラーハンドリングではなく、
+	// 意味のある結果を返しようがない呼び出しを実行しないだけ（locked decision 12 と同種）。
+	let hasOpaquePixel = false;
+	for (let i = 3; i < image.data.length; i += 4) {
+		if (image.data[i] > 0) {
+			hasOpaquePixel = true;
+			break;
+		}
+	}
+	if (!hasOpaquePixel) {
+		return {
+			width: target.width,
+			height: target.height,
+			data: new Uint8ClampedArray(target.width * target.height * 4),
+		};
+	}
 	const pixels: PixelData[] = [];
 	for (let i = 0; i < image.data.length; i += 4) {
 		pixels.push({
