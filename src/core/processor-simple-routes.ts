@@ -18,6 +18,7 @@ import {
 	removeBackground,
 	removeSmallFloatingComponentsInPlace,
 } from "./background-removal";
+import { applyCleanupStage } from "./cleanup";
 import { applyCohesionStage, type CohesionRenderer } from "./cohesion";
 import { applyColorReduction, extractUsedColors } from "./color-reduction";
 import { removeSmallComponents } from "./components";
@@ -403,6 +404,11 @@ export const processForcedRoute = (
 			log,
 			o.fixedPalette,
 		);
+	}
+	// [Intended] clean-up はパレット反映後・最終出力調整の前に走る
+	// （spec M4, locked decision 3）。forced 経路だけがこの呼び出しを持つ。
+	if (o.cleanup) {
+		finalResult = applyCleanupStage(finalResult);
 	}
 
 	// 補正済み比較: パイプラインと同じセルサンプリングを使用する。

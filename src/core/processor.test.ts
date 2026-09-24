@@ -236,6 +236,26 @@ describe("processImage", () => {
 				getExpectPath("cohesion-off-forced"),
 			);
 		});
+
+		it("cleanup on (cohesion still off) differs from the golden -- proves clean-up is wired into the forced route", async () => {
+			// mkCohesionInput の迷い赤ピクセル (8,8) と 1 ピクセルだけの階段が
+			// clean-up の対象になるように作られている。cohesion を off のまま
+			// cleanup だけ on にして、golden（両方 off）とバイト単位で違うことを
+			// 確認する -- processForcedRoute への配線が抜けていれば、この差は
+			// 出ない。
+			const result = processImage(mkCohesionInput(), {
+				forcePixelsW: 8,
+				forcePixelsH: 8,
+				cohesion: false,
+				cleanup: true,
+			});
+			const golden = await readPngAsRawImage(
+				getExpectPath("cohesion-off-forced"),
+			);
+			expect(Buffer.from(result.result.data)).not.toEqual(
+				Buffer.from(golden.data),
+			);
+		});
 	});
 
 	describe("resize_and_remove_bg", () => {
