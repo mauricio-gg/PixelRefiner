@@ -36,7 +36,12 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["bin", "dist", "README.md", "LICENSE"],
+  "files": [
+    "bin",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "private": true,
   "scripts": {
     "build": "tsdown && tsc -p tsconfig.dts.json",
@@ -46,6 +51,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
+    "@resvg/resvg-wasm": "2.6.2",
+    "@visioncortex/vtracer": "1.0.0-alpha.4",
     "sharp": "^0.35",
     "zod": "^4.2"
   },

@@ -27,6 +27,7 @@ import type {
 } from "../shared/types";
 import type { BackgroundBehavior } from "./background";
 import type { CellSamplingMode } from "./cell-sampler";
+import type { CohesionRenderer } from "./cohesion";
 import type { DetectOptions } from "./detector";
 import type { DownsampleOptions } from "./image-operations";
 
@@ -224,6 +225,23 @@ export type ProcessOptions = DetectOptions & {
 		img: RawImage,
 		meta?: Record<string, unknown>,
 	) => void;
+	/** セルサンプリングの前に Oklab で色域をグルーピングする（spec M4, locked decision 2）。 */
+	cohesion?: boolean;
+	/** グルーピングする Oklab の色系統の数（spec M4, locked decision 7）。 */
+	cohesionFamilies?: number;
+	/** 各色領域を何階調に落とすか（spec M4, locked decision 7）。 */
+	cohesionTones?: number;
+	/** パレットマッピング後の 4 つの手直しルールを走らせる（spec M4, locked decision 3）。 */
+	cleanup?: boolean;
+	/**
+	 * cohesion 段階のトレース＋レンダリング処理。内部専用
+	 * （`packages/mcp/src/engine/types.ts` の `INTERNAL_OPTION_KEYS` に、`debugHook` と
+	 * 同じ扱いで登録する）-- AI からは絶対に設定できず、`effectiveOptions` にも現れない。
+	 * `packages/mcp` のエンジン層が渡す。CohesionRenderer を渡さずに `cohesion` を
+	 * 有効にしたライブラリ／ブラウザ呼び出し元は、黙って no-op になるのではなく
+	 * そのまま Error を投げられる。
+	 */
+	cohesionRenderer?: CohesionRenderer;
 };
 
 /**
@@ -363,6 +381,11 @@ export const normalizeProcessOptions = (
 	bgRgb?: string;
 	debug?: boolean;
 	debugHook?: ProcessOptions["debugHook"];
+	cohesion: boolean;
+	cohesionFamilies: number;
+	cohesionTones: number;
+	cleanup: boolean;
+	cohesionRenderer?: CohesionRenderer;
 } => {
 	const raw = options ?? {};
 	const debug = raw.debug ?? PROCESS_DEFAULTS.debug;
@@ -510,6 +533,17 @@ export const normalizeProcessOptions = (
 	const bgExtractionMethod =
 		raw.bgExtractionMethod ?? PROCESS_DEFAULTS.bgExtractionMethod;
 	const bgRgb = raw.bgRgb;
+	const cohesion = raw.cohesion ?? PROCESS_DEFAULTS.cohesion;
+	const cohesionFamilies = clampInt(
+		raw.cohesionFamilies ?? PROCESS_RANGES.cohesionFamilies.default,
+		PROCESS_RANGES.cohesionFamilies,
+	);
+	const cohesionTones = clampInt(
+		raw.cohesionTones ?? PROCESS_RANGES.cohesionTones.default,
+		PROCESS_RANGES.cohesionTones,
+	);
+	const cleanup = raw.cleanup ?? PROCESS_DEFAULTS.cleanup;
+	const cohesionRenderer = raw.cohesionRenderer;
 
 	return {
 		detect,
@@ -591,6 +625,11 @@ export const normalizeProcessOptions = (
 		bgRgb,
 		debug,
 		debugHook,
+		cohesion,
+		cohesionFamilies,
+		cohesionTones,
+		cleanup,
+		cohesionRenderer,
 	};
 };
 

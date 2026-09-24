@@ -15,6 +15,7 @@ export const INTERNAL_OPTION_KEYS: readonly string[] = [
 	"detectedGrid",
 	"debugLabel",
 	"gridSignals",
+	"cohesionRenderer",
 ];
 
 /** INTERNAL_OPTION_KEYS の型側の対応物。配列とこの型は同じ集合を指す。 */
@@ -24,7 +25,8 @@ export type InternalOptionKey =
 	| "onDetectedGrid"
 	| "detectedGrid"
 	| "debugLabel"
-	| "gridSignals";
+	| "gridSignals"
+	| "cohesionRenderer";
 
 /** 詳細設定として公開する ProcessOptions のキー。 */
 export type AdvancedOptionKey = Exclude<

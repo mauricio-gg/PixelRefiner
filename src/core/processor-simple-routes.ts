@@ -18,6 +18,7 @@ import {
 	removeBackground,
 	removeSmallFloatingComponentsInPlace,
 } from "./background-removal";
+import { applyCohesionStage, type CohesionRenderer } from "./cohesion";
 import { applyColorReduction, extractUsedColors } from "./color-reduction";
 import { removeSmallComponents } from "./components";
 import {
@@ -177,7 +178,19 @@ export const processForcedRoute = (
 			? image
 			: cropRawImage(image, bounds.x, bounds.y, bounds.w, bounds.h);
 	const createLogicalPass = (bounds: NonNullable<typeof b>) => {
-		const cropped = cropToBounds(working, bounds);
+		let cropped = cropToBounds(working, bounds);
+		// [Intended] cohesion は working（事前背景除去済みの原寸）に対して、downsample の
+		// 直前で走る（spec M4, locked decision 2・18）。ここで target ちょうどのサイズへ
+		// 描き直すことで、下の cellW/H は 1 になり、downsample は素通しになる。
+		if (o.cohesion) {
+			cropped = applyCohesionStage(
+				cropped,
+				{ width: outW, height: outH },
+				o.cohesionFamilies,
+				o.cohesionTones,
+				o.cohesionRenderer as CohesionRenderer,
+			);
+		}
 		// [Policy] セル寸法は軸ごとに独立して求める。横と縦でドット幅が微妙に異なる入力を
 		// 救うための最終手段であり、縦横比を保つ等方分割へ「修正」してはいけない。
 		// 縦横比を保った縮小が要る場合は、かんたん設定の「ドットの大きさ」(cellScale) を使う。

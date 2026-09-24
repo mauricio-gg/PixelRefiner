@@ -10,6 +10,10 @@ import type {
 import { encodePng } from "../io/image-io";
 import type { AnalysisReport } from "./analysis-report";
 import {
+	ensureCohesionRendererReady,
+	nodeCohesionRenderer,
+} from "./cohesion-renderer";
+import {
 	type BatchRequest,
 	type BatchResult,
 	refineBatchWith,
@@ -94,6 +98,10 @@ export const createEngine = (): PixelRefinerEngine => {
 		const decoded = await decodeInput(input);
 		const settings = resolveSettings(request.settings);
 		const { options } = settings;
+		if (options.cohesion) {
+			await ensureCohesionRendererReady();
+			options.cohesionRenderer = nodeCohesionRenderer;
+		}
 		const cacheKey = cacheKeyOf(decoded.image, options);
 		const base = runCore(() =>
 			service.process(decoded.image, options, cacheKey),
@@ -124,6 +132,10 @@ export const createEngine = (): PixelRefinerEngine => {
 		const decoded = await decodeInput(input);
 		// [Policy] debug は AI から指定できないのと同じ理由でここでも無効に固定する。
 		const effective: ProcessOptions = { ...options, debug: false };
+		if (effective.cohesion) {
+			await ensureCohesionRendererReady();
+			effective.cohesionRenderer = nodeCohesionRenderer;
+		}
 		const cacheKey = cacheKeyOf(decoded.image, effective);
 		const processed = runCore(() =>
 			service.process(decoded.image, effective, cacheKey),

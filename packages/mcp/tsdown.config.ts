@@ -21,6 +21,17 @@ export default defineConfig({
 	dts: false,
 	// [Workaround] 旧 external は tsdown 0.23 で deprecated になったため deps.neverBundle を使う。
 	// sharp はネイティブバイナリを持つので同梱できず、SDK と zod は publish 時に依存として
-	// 解決されるべきものなので、いずれもバンドルへ取り込まない。
-	deps: { neverBundle: ["sharp", /^@modelcontextprotocol\//, "zod"] },
+	// 解決されるべきものなので、いずれもバンドルへ取り込まない。vtracer は wasm を
+	// require("fs") で自前ロードし、resvg-wasm は index_bg.wasm を createRequire で
+	// 解決する -- どちらも自分自身のファイル位置に依存したロード処理を持つため、
+	// バンドルに巻き込むとその処理ごと書き換わって壊れる（sharp と同じ理由）。
+	deps: {
+		neverBundle: [
+			"sharp",
+			/^@modelcontextprotocol\//,
+			"zod",
+			"@visioncortex/vtracer",
+			"@resvg/resvg-wasm",
+		],
+	},
 });

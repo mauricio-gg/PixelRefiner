@@ -18,6 +18,10 @@ import type {
 import { encodePng } from "../io/image-io";
 import { type AnalysisReport, rgbToHex } from "./analysis-report";
 import {
+	ensureCohesionRendererReady,
+	nodeCohesionRenderer,
+} from "./cohesion-renderer";
+import {
 	candidatePlansOf,
 	type DecodedInput,
 	decodeInput,
@@ -235,6 +239,10 @@ export const refineBatchWith = async (
 	for (let index = 0; index < prepared.length; index += 1) {
 		const entry = prepared[index];
 		if (entry.status !== "ready") continue;
+		if (entry.settings.options.cohesion) {
+			await ensureCohesionRendererReady();
+			entry.settings.options.cohesionRenderer = nodeCohesionRenderer;
+		}
 		inputs.push({
 			id: request.items[index].id,
 			image: entry.decoded.image,

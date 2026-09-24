@@ -40,6 +40,14 @@ export const PROCESS_RANGES = {
 	colorCount: { min: 2, max: 256, default: 32 } as const,
 	// ディザリング
 	ditherStrength: { min: 0, max: 100, default: 0 } as const,
+	// cohesion: トレース前に画像を分類する Oklab の色系統の数。colorCount と同じ
+	// 範囲（どちらも OklabKMeans のクラスタ数を決める）。スパイクは 14 に固定して
+	// 測定しており、他の値は試していない。
+	cohesionFamilies: { min: 2, max: 256, default: 14 } as const,
+	// cohesion: 各色領域に残す階調数。スパイクは 2〜4 を測定し、2 が最も faithfulness
+	// の良い落としどころだった。8 はそれ以上上げても「階調をまとめる」意味を失わない
+	// 上限として余裕を持たせただけの値。
+	cohesionTones: { min: 1, max: 8, default: 2 } as const,
 	// 検出器: 自動検出する最大セル数（各軸）
 	autoMaxCells: { min: 2, max: 1024, default: 512 } as const,
 	// アウトライン
@@ -901,6 +909,17 @@ export const PROCESS_DEFAULTS = {
 	backgroundMask: true,
 	// 格子候補の各信号を個別に有効／無効にする
 	gridSignals: GRID_SIGNAL_DEFAULTS,
+
+	// cohesion / clean-up (M4): セルサンプリングの前に色域をグルーピングし、パレット
+	// マッピングの後に 4 つの手直しルールを走らせる。ここでは OFF が既定 -- ライブラリ
+	// やブラウザのバックグラウンドスレッド（src/core/worker.ts）からの呼び出しは
+	// CohesionRenderer を渡さないため、ここが ON だと強制サイズのリファインが軒並み
+	// 「レンダラー未指定」の例外を投げてしまう。出荷する CLI/MCP 側は resolveSettings が
+	// ON へ補うので、実際に使う側では既定 ON のまま見える。
+	cohesion: false,
+	cohesionFamilies: PROCESS_RANGES.cohesionFamilies.default,
+	cohesionTones: PROCESS_RANGES.cohesionTones.default,
+	cleanup: false,
 
 	// [Intended] 公開済みの旧オプション用。新しい既定処理には使用しない。
 	floatingMaxPixels: PROCESS_RANGES.floatingMaxPixels.default,
