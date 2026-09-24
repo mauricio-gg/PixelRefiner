@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { applyCohesionStage } from "../../../../src/core/cohesion";
 import { processImage } from "../../../../src/core/processor";
 import {
-	getExpectPath,
+	getGoldenPath,
 	mkCohesionInput,
 	readPngAsRawImage,
 } from "../../../../src/core/processor-test-helpers";
@@ -89,7 +89,7 @@ describe("applyCohesionStage with the real Node renderer", () => {
 
 	it("with cohesion and cleanup off, matches the golden; with cohesion on (real renderer), it differs", async () => {
 		const golden = await readPngAsRawImage(
-			getExpectPath("cohesion-off-forced"),
+			getGoldenPath("cohesion-off-forced"),
 		);
 		const off = processImage(mkCohesionInput(), {
 			forcePixelsW: 8,

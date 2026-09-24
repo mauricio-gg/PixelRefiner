@@ -152,10 +152,23 @@ export const RESIZE_WITH_TRIMMING_AUTO_EDGE_PIXELS: readonly PixelException[] = 
 	{ x: 44, y: 11, rgb: [4, 4, 4] },
 ];
 
-export const getExpectPath = (fixtureBase: string): string =>
+const buildExpectPath = (root: string, fixtureBase: string): string =>
 	fileURLToPath(
-		new URL(`../../test/fixtures/${fixtureBase}-expect.png`, import.meta.url),
+		new URL(`../../${root}/${fixtureBase}-expect.png`, import.meta.url),
 	);
+
+export const getExpectPath = (fixtureBase: string): string =>
+	buildExpectPath("test/fixtures", fixtureBase);
+
+/**
+ * ユニットテスト専用のゴールデン画像へのパスを返す。
+ * [Intended] `test/fixtures/` は品質ケースの一部でなければならず、
+ * `test/quality/manifest.ts` が全 PNG をケースの参照から辿れることを検査する
+ * (未登録の fixture はテスト失敗になる)。合成入力を使うユニットテストの
+ * ゴールデン(品質ケースではない)はここに置き分けて、そのチェックの対象外にする。
+ */
+export const getGoldenPath = (fixtureBase: string): string =>
+	buildExpectPath("test/golden", fixtureBase);
 
 /**
  * 12x12 の合成入力。cohesion（色域のグルーピング）と clean-up（迷いピクセル・

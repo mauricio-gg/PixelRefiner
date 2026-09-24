@@ -7,6 +7,7 @@ import {
 	expectSameImage,
 	expectSameImageExcept,
 	getExpectPath,
+	getGoldenPath,
 	makeDebugHook,
 	mkCohesionInput,
 	RESIZE_WITH_TRIMMING_AUTO_EDGE_PIXELS,
@@ -228,12 +229,12 @@ describe("processImage", () => {
 				forcePixelsH: 8,
 			});
 			const expected = await readPngAsRawImage(
-				getExpectPath("cohesion-off-forced"),
+				getGoldenPath("cohesion-off-forced"),
 			);
 			expectSameImage(
 				result.result,
 				expected,
-				getExpectPath("cohesion-off-forced"),
+				getGoldenPath("cohesion-off-forced"),
 			);
 		});
 
@@ -250,7 +251,7 @@ describe("processImage", () => {
 				cleanup: true,
 			});
 			const golden = await readPngAsRawImage(
-				getExpectPath("cohesion-off-forced"),
+				getGoldenPath("cohesion-off-forced"),
 			);
 			expect(Buffer.from(result.result.data)).not.toEqual(
 				Buffer.from(golden.data),
