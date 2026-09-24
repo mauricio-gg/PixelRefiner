@@ -40,6 +40,7 @@ const alphaCell = (
 
 const options = {
 	mode: "alpha-aware-medoid",
+	sampleWindow: 3,
 	maxSamplesPerCell: 64,
 	alphaThreshold: 16,
 	preserveThinFeatures: false,
@@ -327,5 +328,62 @@ describe("cell sampler", () => {
 		expect(normalized.maxSamplesPerCell).toBe(256);
 		expect(normalized.cellAlphaThreshold).toBe(0);
 		expect(normalized.cellSamplingMode).toBe("edge-aware");
+	});
+
+	it("lets sampleWindow smooth noisy samples toward the true colour in the default mode, while 1 and 3 stay a no-op", () => {
+		// 20x20 の単一セル。地の色はベース (100,100,100) で、x・y が両方とも奇数の画素
+		// だけを外れ値 (220,220,220) にする。無平滑化のストライプ状サンプリングは
+		// x,y ともに奇数の座標だけを見るため、window<=3 では毎回この外れ値だけを拾う。
+		// 5x5 近傍で中央値を取ると（奇数×奇数はたかだか 9/25）多数派の地の色へ戻る。
+		const size = 20;
+		const base = [100, 100, 100] as const;
+		const outlier = 220;
+		const data = new Uint8ClampedArray(size * size * 4);
+		for (let y = 0; y < size; y += 1) {
+			for (let x = 0; x < size; x += 1) {
+				const isOutlier = x % 2 === 1 && y % 2 === 1;
+				const idx = (y * size + x) * 4;
+				data[idx] = isOutlier ? outlier : base[0];
+				data[idx + 1] = isOutlier ? outlier : base[1];
+				data[idx + 2] = isOutlier ? outlier : base[2];
+				data[idx + 3] = 255;
+			}
+		}
+		const noisy: RawImage = { width: size, height: size, data };
+		const noisyGrid = grid(size, size);
+		const baseOptions = {
+			mode: "hard-alpha-medoid",
+			maxSamplesPerCell: 100,
+			alphaThreshold: 16,
+			preserveThinFeatures: false,
+		} as const;
+
+		const window1 = downsample(noisy, noisyGrid, {
+			...baseOptions,
+			sampleWindow: 1,
+		});
+		const window3 = downsample(noisy, noisyGrid, {
+			...baseOptions,
+			sampleWindow: 3,
+		});
+		const window7 = downsample(noisy, noisyGrid, {
+			...baseOptions,
+			sampleWindow: 7,
+		});
+
+		// 1 と 3 は常に no-op: 出力は完全に一致する。
+		expect(Array.from(window1.data)).toEqual(Array.from(window3.data));
+
+		const distanceToBase = (pixel: Uint8ClampedArray): number =>
+			(pixel[0] - base[0]) ** 2 +
+			(pixel[1] - base[1]) ** 2 +
+			(pixel[2] - base[2]) ** 2;
+
+		const distance3 = distanceToBase(window3.data);
+		const distance7 = distanceToBase(window7.data);
+
+		// 大きい window は選ばれる色を変え、かつ真のベース色に近づける。
+		expect(Array.from(window7.data)).not.toEqual(Array.from(window3.data));
+		expect(distance7).toBeLessThan(distance3);
 	});
 });

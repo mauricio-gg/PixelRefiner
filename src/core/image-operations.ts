@@ -176,6 +176,7 @@ export const downsample = (
 	}
 	const samplerOptions: CellSamplerOptions = {
 		mode: options.mode,
+		sampleWindow: options.sampleWindow,
 		maxSamplesPerCell: options.maxSamplesPerCell,
 		alphaThreshold: options.alphaThreshold,
 		preserveThinFeatures: options.preserveThinFeatures,

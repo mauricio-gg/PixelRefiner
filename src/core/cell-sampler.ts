@@ -12,6 +12,7 @@ type RGBA = [number, number, number, number];
 
 export type CellSamplerOptions = {
 	mode: Exclude<CellSamplingMode, "legacy-median">;
+	sampleWindow: number;
 	maxSamplesPerCell: number;
 	alphaThreshold: number;
 	preserveThinFeatures: boolean;
@@ -75,6 +76,92 @@ const createWorkspace = (size: number): Workspace => ({
 	thinContinuity: new Uint8Array(size),
 	inCore: new Uint8Array(size),
 });
+
+/**
+ * サンプル色の平滑化に使う、サンプラー生成時に 1 回だけ確保する再利用バッファ。
+ * `out` はチャンネルごとの中央値 [r, g, b] を書き戻す長さ 3 の使い回し領域。
+ */
+type SmoothingBuffers = {
+	neighborR: Uint8Array;
+	neighborG: Uint8Array;
+	neighborB: Uint8Array;
+	out: Int32Array;
+};
+
+/**
+ * サンプル色を平滑化する正方近傍の一辺の長さを求める。
+ *
+ * [Intended] sampleWindow が 3 以下のときは必ず 0（平滑化なし）を返す。デフォルト値 3 で
+ * 呼び出す既存経路（かんたん設定の既定、ブラウザの詳細設定パネルが常に送る値、
+ * test/quality/cases.json が固定する 3・1 のケース）の出力をこの機能追加で変えない、という
+ * ハード制約を守るための境界線がここにある。window=5→3x3, 7→5x5, 9→7x7 と、
+ * window-2 がそのまま近傍の一辺になる。
+ */
+const colorSmoothingSide = (sampleWindow: number): number =>
+	sampleWindow > 3 ? sampleWindow - 2 : 0;
+
+/** 再利用バッファの中で [0, count) の範囲だけを挿入ソートする（要素数が小さいため十分速い）。 */
+const sortRange = (buffer: Uint8Array, count: number): void => {
+	for (let i = 1; i < count; i += 1) {
+		const value = buffer[i];
+		let j = i - 1;
+		while (j >= 0 && buffer[j] > value) {
+			buffer[j + 1] = buffer[j];
+			j -= 1;
+		}
+		buffer[j + 1] = value;
+	}
+};
+
+const medianOfBuffer = (buffer: Uint8Array, count: number): number => {
+	sortRange(buffer, count);
+	const mid = Math.floor(count / 2);
+	if (count % 2 === 0) {
+		return Math.round((buffer[mid - 1] + buffer[mid]) / 2);
+	}
+	return buffer[mid];
+};
+
+/**
+ * サンプル画素 (x, y) の色を、しきい値以上のアルファを持つ近傍だけから
+ * チャンネルごとの中央値で平滑化する。結果は `buffers.out` に書き込み、
+ * 資格を持つ近傍が1つも無ければ false を返して呼び出し側に元の色を残させる。
+ * アルファ自体はここでは扱わない（被覆判定や境界判定を動かさないため）。
+ */
+const smoothSampleColor = (
+	image: RawImage,
+	x: number,
+	y: number,
+	side: number,
+	alphaThreshold: number,
+	buffers: SmoothingBuffers,
+): boolean => {
+	const before = Math.floor((side - 1) / 2);
+	const after = side - 1 - before;
+	const x0 = Math.max(0, x - before);
+	const x1 = Math.min(image.width - 1, x + after);
+	const y0 = Math.max(0, y - before);
+	const y1 = Math.min(image.height - 1, y + after);
+	const data = image.data;
+	const imgW = image.width;
+	let count = 0;
+	for (let ny = y0; ny <= y1; ny += 1) {
+		const rowOffset = ny * imgW;
+		for (let nx = x0; nx <= x1; nx += 1) {
+			const offset = (rowOffset + nx) * 4;
+			if (data[offset + 3] < alphaThreshold) continue;
+			buffers.neighborR[count] = data[offset];
+			buffers.neighborG[count] = data[offset + 1];
+			buffers.neighborB[count] = data[offset + 2];
+			count += 1;
+		}
+	}
+	if (count === 0) return false;
+	buffers.out[0] = medianOfBuffer(buffers.neighborR, count);
+	buffers.out[1] = medianOfBuffer(buffers.neighborG, count);
+	buffers.out[2] = medianOfBuffer(buffers.neighborB, count);
+	return true;
+};
 
 const srgbToLinear = (value: number): number => {
 	const normalized = value / 255;
@@ -163,6 +250,9 @@ const collectSamples = (
 	bounds: CellBounds,
 	workspace: Workspace,
 	limit: number,
+	smoothingSide: number,
+	alphaThreshold: number,
+	smoothingBuffers: SmoothingBuffers | null,
 ): number => {
 	const startX = Math.max(0, Math.floor(bounds.x0));
 	const startY = Math.max(0, Math.floor(bounds.y0));
@@ -201,10 +291,29 @@ const collectSamples = (
 			const stratumX1 = startX + ((column + 1) * width) / columns;
 			const x = Math.min(endX - 1, Math.floor((stratumX0 + stratumX1) / 2));
 			const sourceOffset = (y * image.width + x) * 4;
-			const r = data[sourceOffset];
-			const g = data[sourceOffset + 1];
-			const b = data[sourceOffset + 2];
+			let r = data[sourceOffset];
+			let g = data[sourceOffset + 1];
+			let b = data[sourceOffset + 2];
 			const a = data[sourceOffset + 3];
+			// [Intended] 平滑化はこのサンプルの色（Oklab を含め、以降の代表色計算が見る値）
+			// だけを置き換える。アルファはここでは触れない — 被覆率やハードアルファの
+			// 0/255 判定、にじみ判定を平滑化で動かさないため。
+			if (
+				smoothingSide > 0 &&
+				smoothingBuffers &&
+				smoothSampleColor(
+					image,
+					x,
+					y,
+					smoothingSide,
+					alphaThreshold,
+					smoothingBuffers,
+				)
+			) {
+				r = smoothingBuffers.out[0];
+				g = smoothingBuffers.out[1];
+				b = smoothingBuffers.out[2];
+			}
 			workspace.r[sampleIndex] = r;
 			workspace.g[sampleIndex] = g;
 			workspace.b[sampleIndex] = b;
@@ -554,6 +663,18 @@ const findMedoid = (
 export const createCellSampler = (options: CellSamplerOptions): CellSampler => {
 	const sampleLimit = Math.max(1, Math.floor(options.maxSamplesPerCell));
 	const workspace = createWorkspace(sampleLimit);
+	const smoothingSide = colorSmoothingSide(options.sampleWindow);
+	// [Intended] 平滑化用バッファはサンプラー生成時に 1 回だけ確保し、セルごと・
+	// サンプルごとには確保しない。無効時（window<=3）は null のままにして分岐で外す。
+	const smoothingBuffers: SmoothingBuffers | null =
+		smoothingSide > 0
+			? {
+					neighborR: new Uint8Array(smoothingSide * smoothingSide),
+					neighborG: new Uint8Array(smoothingSide * smoothingSide),
+					neighborB: new Uint8Array(smoothingSide * smoothingSide),
+					out: new Int32Array(3),
+				}
+			: null;
 	const sampleInto: CellSampler["sampleInto"] = (
 		image,
 		bounds,
@@ -561,7 +682,15 @@ export const createCellSampler = (options: CellSamplerOptions): CellSampler => {
 		output,
 		offset,
 	) => {
-		const count = collectSamples(image, bounds, workspace, sampleLimit);
+		const count = collectSamples(
+			image,
+			bounds,
+			workspace,
+			sampleLimit,
+			smoothingSide,
+			options.alphaThreshold,
+			smoothingBuffers,
+		);
 		if (count === 0) {
 			output.fill(0, offset, offset + 4);
 			return;
