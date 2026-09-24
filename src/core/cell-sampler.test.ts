@@ -333,7 +333,7 @@ describe("cell sampler", () => {
 	it("lets sampleWindow smooth noisy samples toward the true colour in the default mode, while 1 and 3 stay a no-op", () => {
 		// 20x20 の単一セル。地の色はベース (100,100,100) で、x・y が両方とも奇数の画素
 		// だけを外れ値 (220,220,220) にする。無平滑化のストライプ状サンプリングは
-		// x,y ともに奇数の座標だけを見るため、window<=3 では毎回この外れ値だけを拾う。
+		// x,y ともに奇数の座標だけを見るため、sampleWindow<=3 では毎回この外れ値だけを拾う。
 		// 5x5 近傍で中央値を取ると（奇数×奇数はたかだか 9/25）多数派の地の色へ戻る。
 		const size = 20;
 		const base = [100, 100, 100] as const;
@@ -382,7 +382,7 @@ describe("cell sampler", () => {
 		const distance3 = distanceToBase(window3.data);
 		const distance7 = distanceToBase(window7.data);
 
-		// 大きい window は選ばれる色を変え、かつ真のベース色に近づける。
+		// 大きい sampleWindow は選ばれる色を変え、かつ真のベース色に近づける。
 		expect(Array.from(window7.data)).not.toEqual(Array.from(window3.data));
 		expect(distance7).toBeLessThan(distance3);
 	});

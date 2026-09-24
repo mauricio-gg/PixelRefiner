@@ -94,8 +94,8 @@ type SmoothingBuffers = {
  * [Intended] sampleWindow が 3 以下のときは必ず 0（平滑化なし）を返す。デフォルト値 3 で
  * 呼び出す既存経路（かんたん設定の既定、ブラウザの詳細設定パネルが常に送る値、
  * test/quality/cases.json が固定する 3・1 のケース）の出力をこの機能追加で変えない、という
- * ハード制約を守るための境界線がここにある。window=5→3x3, 7→5x5, 9→7x7 と、
- * window-2 がそのまま近傍の一辺になる。
+ * ハード制約を守るための境界線がここにある。sampleWindow=5→3x3, 7→5x5, 9→7x7 と、
+ * sampleWindow-2 がそのまま近傍の一辺になる。
  */
 const colorSmoothingSide = (sampleWindow: number): number =>
 	sampleWindow > 3 ? sampleWindow - 2 : 0;
@@ -665,7 +665,7 @@ export const createCellSampler = (options: CellSamplerOptions): CellSampler => {
 	const workspace = createWorkspace(sampleLimit);
 	const smoothingSide = colorSmoothingSide(options.sampleWindow);
 	// [Intended] 平滑化用バッファはサンプラー生成時に 1 回だけ確保し、セルごと・
-	// サンプルごとには確保しない。無効時（window<=3）は null のままにして分岐で外す。
+	// サンプルごとには確保しない。無効時（sampleWindow<=3）は null のままにして分岐で外す。
 	const smoothingBuffers: SmoothingBuffers | null =
 		smoothingSide > 0
 			? {

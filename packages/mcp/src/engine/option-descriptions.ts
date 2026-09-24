@@ -66,7 +66,9 @@ export const OPTION_DESCRIPTIONS: Readonly<Record<AdvancedOptionKey, string>> =
 		watermarkSamplingCompat:
 			"After a watermark removal, switch to the compatibility sampler that keeps the last row from being dropped.",
 		sampleWindow:
-			"In the legacy-median cellSamplingMode, the median window around the cell centre. In every other mode, values above 3 median-smooth each sampled pixel over a (window-2)-wide square before its colour is chosen; 3 or less leaves samples untouched. Larger windows smooth away noise but can blur one-pixel details.",
+			"In the legacy-median cellSamplingMode, the median window around the cell centre. In every other mode, " +
+			"values above 3 median-smooth each sampled pixel over a (window-2)-wide square before its colour is " +
+			"chosen; 3 or less leaves samples untouched. Larger windows smooth away noise but can blur one-pixel details.",
 		cellSamplingMode:
 			"How a cell's single output colour is chosen from the pixels it covers. This is the main knob for anti-aliasing fringes.",
 		maxSamplesPerCell:
