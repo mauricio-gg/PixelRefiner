@@ -66,7 +66,12 @@ export const OPTION_DESCRIPTIONS: Readonly<Record<AdvancedOptionKey, string>> =
 		watermarkSamplingCompat:
 			"After a watermark removal, switch to the compatibility sampler that keeps the last row from being dropped.",
 		sampleWindow:
-			"Median window size used when sampling each cell's colour. Larger windows smooth away noise but can blur one-pixel details.",
+			"In every cellSamplingMode, also the window used to compare grid-size candidates during automatic and " +
+			"hint-guided grid detection. In the legacy-median cellSamplingMode, it is also the median window " +
+			"around the cell centre. In every other mode, values above 3 also median-smooth each sampled pixel " +
+			"over a centred square before its colour is chosen (an even value acts like the odd value one above " +
+			"it: 4 like 5, 6 like 7, 8 like 9); 3 or less leaves samples untouched. Larger values smooth away " +
+			"noise but can blur one-pixel details.",
 		cellSamplingMode:
 			"How a cell's single output colour is chosen from the pixels it covers. This is the main knob for anti-aliasing fringes.",
 		maxSamplesPerCell:
